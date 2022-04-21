@@ -1,0 +1,37 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type LoginDTO {
+  message: String!
+  code: Float!
+}
+
+type Users {
+  name: String!
+}
+
+type UsersDATA {
+  data: Users!
+}
+
+type Query {
+  getCookie: String!
+  Test: String!
+  getUserData: UsersDATA!
+}
+
+type Mutation {
+  Login(phone: String!): LoginDTO!
+  createMusterArticle(mArticle: musterInput!): Users!
+}
+
+input musterInput {
+  article_data: musterArticle!
+  name: String!
+}
+
+input musterArticle {
+  tilte: String!
+  article: String!
+}

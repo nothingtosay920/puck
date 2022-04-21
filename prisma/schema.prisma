@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id Int @default(autoincrement()) @id
+  open_id String @unique
+  uuid_user String @unique 
+  phone String  @unique
+  name  String @unique
+  muster_data  Muster[]
+  gather_data Gather[]
+  user_role Role?
+}
+
+model Muster {
+  name String?
+  muster_id String @unique
+  author User @relation(fields: [authorId], references: [uuid_user])
+  authorId  String
+  article_data MusterArticle[]
+}
+
+model Gather {
+  name String
+  gather_id String @unique
+  author User @relation(fields: [authorId], references: [uuid_user])
+  authorId  String
+  article_data GatherArticle[]
+}
+
+model GatherArticle {
+  id Int @default(autoincrement()) @id
+  tilte String
+  outer_id String
+  article String
+  author Gather @relation(fields: [gather], references: [gather_id])
+  gather  String
+  article_type String @default("GATHER") 
+}
+
+model MusterArticle {
+  id Int @default(autoincrement()) @id
+  tilte String
+  outer_id String @unique
+  article String
+  data Muster @relation(fields: [muster], references: [muster_id])
+  muster String
+  article_type String @default("MUSTER") 
+}
+
+enum RoleV {
+  USER
+  ADMIN
+}
+
+model Role {
+  id Int @default(autoincrement()) @id
+  user_uuid User @relation(fields: [uuid], references: [uuid_user])
+  uuid String @unique
+  role RoleV @default(USER)
+}

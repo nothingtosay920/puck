@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Role" ADD COLUMN     "id" SERIAL NOT NULL,
+ADD CONSTRAINT "Role_pkey" PRIMARY KEY ("id");
