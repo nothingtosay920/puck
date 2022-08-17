@@ -14,15 +14,18 @@ const users_service_1 = require("../users/users.service");
 const app_service_1 = require("../app.service");
 const auth_resolver_1 = require("./auth.resolver");
 const role_service_1 = require("../role/role.service");
-const article_service_1 = require("../article/article.service");
+const users_model_1 = require("../users/users.model");
+const category_service_1 = require("../category/category.service");
+const label_service_1 = require("../label/label.service");
 let AuthModule = class AuthModule {
 };
 AuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            passport_1.PassportModule
+            passport_1.PassportModule,
+            users_model_1.UsersModule,
         ],
-        providers: [users_service_1.UsersService, auth_service_1.AuthService, app_service_1.AppService, auth_resolver_1.AuthResolver, role_service_1.RoleService, article_service_1.ArticleService],
+        providers: [auth_service_1.AuthService, app_service_1.AppService, auth_resolver_1.AuthResolver, role_service_1.RoleService, users_service_1.UsersService, category_service_1.CategoryService, label_service_1.LabelService],
         exports: [role_service_1.RoleService]
     })
 ], AuthModule);

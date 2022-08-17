@@ -1,34 +1,22 @@
-import { Res } from '@nestjs/common';
-import { Resolver, Query, Args, Context, GraphQLExecutionContext, CONTEXT } from '@nestjs/graphql';
-import { Request, Response } from 'express';
-import { AppService } from './app.service';
-import { redis } from './redis/redis';
-
-
-interface MyContext {
-  req: Request,
-  res: Response
-}
+import { HttpService } from '@nestjs/axios';
+import { Query, Resolver } from '@nestjs/graphql';
+import * as FormData from 'form-data'
+import { createReadStream, readFile, readFileSync } from 'fs';
+import { firstValueFrom, map } from 'rxjs';
+import { format, formatDistance, parse, toDate } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
 
 @Resolver()
 export class AppResolver {
-  constructor(private readonly appService: AppService) {}
-
-  // @Query(returns => String)
-  // hello(@Context() context: MyContext) {
-  //   context.res.setHeader("Access-Control-Allow-Origin", context.req.headers.origin)
-  //   context.res.setHeader("Access-Control-Allow-Credentials", "true")
-  //   context.res.cookie('sessionid','lishi',{maxAge:1000*60*60*24})
-  //   return 'test01'
-  // }
-
-  // @Query(returns => String)
-  // setCookie(@Context() context: MyContext) {
-  //   return context.res.cookie['cid']
-  // }
+  constructor(private readonly httpService: HttpService) {}
 
   @Query(returns => String)
-  async getCookie(@Context() context: MyContext) {
-    return context.req.session['uid'] + '1'
+  hello() {
+    const tod = parse("2022-07-31 22:54:24", 'yyyy-MM-dd HH:mm:ss', new Date())
+    const v = formatDistance(tod, new Date(), {locale: zhCN})    
+    console.log(v, tod);
+    
+    return 'test:' 
   }
+  
 }

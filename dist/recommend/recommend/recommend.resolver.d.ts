@@ -1,0 +1,75 @@
+import { ArticleService } from 'src/article/article.service';
+import { CategoryService } from 'src/category/category.service';
+import { LabelService } from 'src/label/label.service';
+import { GatherService } from 'src/muster/gather.service';
+import { MusterService } from 'src/muster/muster.service';
+import { RecommendItem } from './recommend.dto';
+import { RecommendArticles } from './recommend.input';
+import { RecommendService } from './recommend.service';
+export declare class RecommendResolver {
+    private readonly recommendService;
+    private readonly articleService;
+    private readonly gatherService;
+    private readonly musterService;
+    private readonly categoryService;
+    private readonly labelService;
+    constructor(recommendService: RecommendService, articleService: ArticleService, gatherService: GatherService, musterService: MusterService, categoryService: CategoryService, labelService: LabelService);
+    recommendList(label: RecommendArticles): Promise<Promise<{
+        article_img: string;
+        title: string;
+        type: string;
+        gather: string;
+        labels: string[];
+        categorys: string;
+        description: string;
+        outer_id: string;
+        zan: number;
+        hot: number;
+        author: string;
+        muster: any;
+        edit_time: string;
+    } | {
+        muster: string;
+        type: string;
+        description: string;
+        article_img: string;
+        title: string;
+        labels: string[];
+        categorys: string;
+        outer_id: string;
+        zan: number;
+        hot: number;
+        author: string;
+        gather: any;
+        edit_time: string;
+    }>[]>;
+    handleList(recommendList: RecommendItem[]): Promise<{
+        article_img: string;
+        title: string;
+        type: string;
+        gather: string;
+        labels: string[];
+        categorys: string;
+        description: string;
+        outer_id: string;
+        zan: number;
+        hot: number;
+        author: string;
+        muster: any;
+        edit_time: string;
+    } | {
+        muster: string;
+        type: string;
+        description: string;
+        article_img: string;
+        title: string;
+        labels: string[];
+        categorys: string;
+        outer_id: string;
+        zan: number;
+        hot: number;
+        author: string;
+        gather: any;
+        edit_time: string;
+    }>[];
+}

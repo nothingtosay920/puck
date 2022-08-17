@@ -1,5 +1,102 @@
+import { DynamicType } from '@prisma/client';
+import { IContext } from 'src/auth/auth.service';
+import { GatherService } from 'src/muster/gather.service';
+import { MusterService } from 'src/muster/muster.service';
+import { FeedbackService } from 'src/recommend/feedback/feedback.service';
+import { UsersService } from 'src/users/users.service';
+import { ArticleDTO, ArticleType, DraftArticle } from './article.dto';
 import { ArticleService } from './article.service';
 export declare class ArticleResolver {
     private readonly articleService;
-    constructor(articleService: ArticleService);
+    private readonly feedbackService;
+    private readonly musterService;
+    private readonly gatherArticle;
+    private readonly userSerivce;
+    constructor(articleService: ArticleService, feedbackService: FeedbackService, musterService: MusterService, gatherArticle: GatherService, userSerivce: UsersService);
+    getArticleById(id: string, context: IContext): Promise<ArticleDTO>;
+    getArticleByIdNotFB(id: string, context: IContext): Promise<ArticleDTO>;
+    getRecords(page: number, context: IContext): Promise<{
+        article_data: Promise<{
+            timestamp: string;
+            article: string;
+            description: string;
+            muster: string;
+            title: string;
+            id: string;
+            article_img: string;
+            type: string;
+            edit_time: string;
+            author: string;
+            gather: string;
+            labels: string[];
+            categorys: string;
+            zan: string;
+            hot: string;
+            outer_id: string;
+            befollowed: number;
+            zan_status: Boolean;
+            follow_status: Boolean;
+            collection_status: Boolean;
+            author_img: string;
+            author_name: string;
+        }>[];
+        next: number;
+    }>;
+    getWritingArticleById(id: string): Promise<DraftArticle>;
+    getUserSavedApi(context: IContext): Promise<{
+        list: Promise<{
+            title: string;
+            hot: string;
+            zan: string;
+            edit_time: string;
+        }>[];
+    }>;
+    getDraftArticleById(id: string): Promise<any>;
+    addZan(id: string, type: string, context: IContext): number;
+    followedArticle(id: string, type: ArticleType, context: IContext): Promise<number>;
+    getGatherArticle(article_id: string): Promise<{
+        description: string;
+        article: any;
+        title: any;
+        img: any;
+        labels: string[];
+        categorys: string;
+        author: string;
+        gather: string;
+        id: any;
+        type: any;
+        article_img: any;
+        befollowed: any;
+        author_img: string;
+        author_name: string;
+        hot: any;
+        zan: any;
+        edit_time: any;
+    }>;
+    getMusterArticle(article_id: string): Promise<{
+        description: any;
+        article: any;
+        title: any;
+        img: any;
+        labels: any;
+        categorys: any;
+        author: string;
+        muster: any;
+        id: any;
+        type: any;
+        article_img: any;
+        befollowed: any;
+        author_img: string;
+        author_name: string;
+        hot: any;
+        zan: any;
+        edit_time: any;
+    }>;
+    dynamicApi(content: string, type: DynamicType, context: IContext): Promise<import(".prisma/client").User | ArticleDTO>;
+    getCollectionArticles(page: number, context: IContext): Promise<{
+        list: Promise<ArticleDTO>[];
+        next: number;
+        count: number;
+    }>;
+    removeMusterArticleById(id: string, context: IContext): Promise<number>;
 }

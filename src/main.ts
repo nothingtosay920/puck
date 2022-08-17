@@ -6,12 +6,14 @@ import * as session from 'express-session';
 import * as Store from 'connect-redis';
 import { redis } from './redis/redis';
 
+const RedisStore = Store(session)
+const store = new RedisStore({client: redis})
 async function bootstrap() {
-  const RedisStore = Store(session)
+  
   const app = await NestFactory.create(AppModule)
   app.use(
     session({
-      store: new RedisStore({client: redis}),
+      store: store,
       secret: 'nothingtosay920',
       resave: false,
       saveUninitialized: false,
@@ -19,10 +21,10 @@ async function bootstrap() {
         secure: process.env.NODE_ENV == 'production',
         httpOnly: true,
         path: '/',
-        maxAge: 1000*60*60*24
+        maxAge: 1000*60*60*24*7
       }
     })
-  );
+  )
   app.use(cookieParser())
   app.enableCors({
     origin: 'http://localhost:3000',
@@ -30,7 +32,9 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type, Accept',
     credentials: true,
   });
+  
   app.useGlobalPipes(new ValidationPipe())
   await app.listen(8080);
 }
 bootstrap();
+export default store

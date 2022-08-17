@@ -12,3 +12,15 @@ export class ArticleInput {
 
   readonly articleType: ArtiType
 }
+
+@InputType()
+export class CMuster {
+  @Field({nullable: false})
+  name: string
+
+  @Field({nullable: false})
+  desc: string
+
+  @Field({nullable: false})
+  muster_img: string
+}

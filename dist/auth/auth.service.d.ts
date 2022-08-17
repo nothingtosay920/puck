@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { RcommendUserService } from 'src/recommend/user/user.service';
 import { UsersService } from '../users/users.service';
 export declare type IContext = {
     req: Request;
@@ -6,14 +7,14 @@ export declare type IContext = {
 };
 export declare class AuthService {
     private readonly usersService;
-    constructor(usersService: UsersService);
+    private readonly recommendUserService;
+    constructor(usersService: UsersService, recommendUserService: RcommendUserService);
     Login(phone: string, context: IContext): Promise<{
         code: string;
         message: string;
     }>;
-    getUserData(context: IContext): Promise<{
-        data: {
-            name: string;
-        };
+    LogOut(context: IContext): Promise<{
+        code: number;
     }>;
+    getUserData(context: IContext): Promise<{}>;
 }

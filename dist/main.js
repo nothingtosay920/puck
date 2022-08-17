@@ -7,11 +7,12 @@ const cookieParser = require("cookie-parser");
 const session = require("express-session");
 const Store = require("connect-redis");
 const redis_1 = require("./redis/redis");
+const RedisStore = Store(session);
+const store = new RedisStore({ client: redis_1.redis });
 async function bootstrap() {
-    const RedisStore = Store(session);
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.use(session({
-        store: new RedisStore({ client: redis_1.redis }),
+        store: store,
         secret: 'nothingtosay920',
         resave: false,
         saveUninitialized: false,
@@ -19,7 +20,7 @@ async function bootstrap() {
             secure: process.env.NODE_ENV == 'production',
             httpOnly: true,
             path: '/',
-            maxAge: 1000 * 60 * 60 * 24
+            maxAge: 1000 * 60 * 60 * 24 * 7
         }
     }));
     app.use(cookieParser());
@@ -33,4 +34,5 @@ async function bootstrap() {
     await app.listen(8080);
 }
 bootstrap();
+exports.default = store;
 //# sourceMappingURL=main.js.map
