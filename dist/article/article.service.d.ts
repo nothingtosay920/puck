@@ -1,28 +1,69 @@
 import { AppService } from 'src/app.service';
-import { ArticleType } from './article.dto';
 export declare class ArticleService {
     private prisma;
     constructor(prisma: AppService);
-    getGatherArticle(id: string): Promise<import(".prisma/client").GatherArticle & {
-        befollowed: import(".prisma/client").GatherArticleBeFollowed[];
+    findArticleFollow(outer_id: string, uuid: string): Promise<{
+        info: import(".prisma/client").Info[];
     }>;
-    getMusterArticle(id: string): Promise<import(".prisma/client").MusterArticle & {
-        labels: import(".prisma/client").MusterLabelMap[];
-        categorys: import(".prisma/client").CategoryMusterMap[];
-        befollowed: import(".prisma/client").MusterArticleBeFollowed[];
+    remoceArticleFollow(outer_id: string, uuid: string): Promise<import(".prisma/client").Article>;
+    getArticle(id: string): Promise<import(".prisma/client").Article & {
+        info: import(".prisma/client").Info[];
+        zan: import(".prisma/client").Zan[];
+        labels: import(".prisma/client").Label[];
+        categorys: import(".prisma/client").Category[];
+        collection: import(".prisma/client").Collection[];
     }>;
-    addZanInMuster(id: string): Promise<import(".prisma/client").MusterArticle>;
-    addZanInGather(id: string): Promise<import(".prisma/client").GatherArticle>;
-    readingsMuster(id: string): Promise<import(".prisma/client").MusterArticle>;
-    artilceBeFollowed(uid: string, id: string, type: ArticleType): Promise<import(".prisma/client").GatherArticle | import(".prisma/client").MusterArticle>;
+    getGather(gather_id: string): Promise<{
+        gather_id: string;
+        articles: {
+            title: string;
+            outer_id: string;
+            article: string;
+            description: string;
+            article_img: string;
+            edit_time: string;
+        }[];
+        gather_name: string;
+        article_type: import(".prisma/client").ArticleType;
+        author: import(".prisma/client").User;
+        gather_img: string;
+        article_description: string;
+    }>;
+    removeArticleById(id: string): Promise<import(".prisma/client").Article>;
+    searchAllArticle(query: string, uid: string): Promise<{
+        articles: {
+            articles: import(".prisma/client").Article[];
+        }[];
+    }>;
+    searchGatherArticle(query: string, uid: string): Promise<{
+        articles: {
+            articles: import(".prisma/client").Article[];
+        }[];
+    }>;
+    searchColumnArticle(query: string, uid: string): Promise<{
+        articles: {
+            articles: import(".prisma/client").Article[];
+        }[];
+    }>;
+    searchAuthorArticle(query: string, uid: string, page: number): Promise<(import(".prisma/client").Gather & {
+        articles: (import(".prisma/client").Article & {
+            info: import(".prisma/client").Info[];
+            zan: import(".prisma/client").Zan[];
+            labels: import(".prisma/client").Label[];
+            categorys: import(".prisma/client").Category[];
+        })[];
+        author: import(".prisma/client").User;
+    })[]>;
+    artilceBeFollowed(uid: string, id: string): Promise<import(".prisma/client").Article>;
     getGatherById(id: string): Promise<import(".prisma/client").Gather & {
-        labels: {
-            label: string;
-        }[];
-        categorys: {
-            category: string;
-        }[];
-        article_data: import(".prisma/client").GatherArticle[];
+        articles: (import(".prisma/client").Article & {
+            labels: import(".prisma/client").Label[];
+            categorys: import(".prisma/client").Category[];
+        })[];
     }>;
-    removeMusterArticleById(id: string, uid: string): Promise<number>;
+    getArticlePanelStatus(uuid: string, article_id: string): Promise<{
+        zan: import(".prisma/client").Zan[];
+        collection: import(".prisma/client").Collection[];
+        follow: import(".prisma/client").Follow[];
+    }>;
 }

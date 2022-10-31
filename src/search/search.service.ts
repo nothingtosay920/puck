@@ -1,20 +1,27 @@
 import { Injectable } from "@nestjs/common";
-import { AppService } from "src/app.service";
+import { ElasticsearchService } from "@nestjs/elasticsearch";
+import { Args, Query } from "@nestjs/graphql";
 
 
 
 @Injectable()
 export class SearchService {
-  constructor(private readonly prisma: AppService) {}
+  constructor(private readonly client: ElasticsearchService) {}
 
-  // async findArticle(str: string) {
-  //   return await this.prisma.musterArticle.findMany({
-  //     where: {
-
-  //     }
-  //   })
-  // }
- 
-
-
+  async Search(query: string, page: number) {
+    const searchRes = await this.client.search({
+      index: 'articles',
+      body: {
+        size: 10,
+        from: 10 * page,
+        query: {
+          match: { title: query }
+        }
+      }
+    })
+    
+    
+    const data = searchRes.hits.hits.map((item) => item._id)
+    return data
+  }
 }

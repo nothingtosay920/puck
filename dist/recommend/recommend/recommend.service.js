@@ -17,24 +17,20 @@ let RecommendService = class RecommendService {
     constructor(httpService) {
         this.httpService = httpService;
     }
-    async latestRecoommend(label) {
-        let data = '';
-        label.forEach((item) => {
-            data += `/${item.label}`;
-        });
-        return await (0, rxjs_1.firstValueFrom)(this.httpService.get(process.env.RECOMMEND_SERVICE + '/api/latest' + data).pipe((0, rxjs_1.map)(res => res.data)));
+    async latestRecoommend(label, page) {
+        return await (0, rxjs_1.firstValueFrom)(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/latest/' + label + `?n=8&offset=${page}`).pipe((0, rxjs_1.map)(res => res.data)));
     }
-    async popularRecommend(label = '') {
-        let data;
-        if (label instanceof Array) {
-            label.forEach((item) => {
-                data += `/${item}`;
-            });
-        }
-        else {
-            data = `/${label}`;
-        }
-        return await (0, rxjs_1.firstValueFrom)(this.httpService.get(process.env.RECOMMEND_SERVICE + '/api/popular' + data).pipe((0, rxjs_1.map)(res => res.data)));
+    async popularRecommend(label, page) {
+        return await (0, rxjs_1.firstValueFrom)(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/popular/' + label + `?n=8&offset=${page}`).pipe((0, rxjs_1.map)(res => res.data)));
+    }
+    async userRecommend(uid, page) {
+        return await (0, rxjs_1.firstValueFrom)(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/recommend/' + uid + `?n=8&offset=${page}`).pipe((0, rxjs_1.map)(res => res.data)));
+    }
+    async relateRecommend(uid) {
+        return await (0, rxjs_1.firstValueFrom)(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/recommend/' + uid + `?n=5`).pipe((0, rxjs_1.map)(res => res.data)));
+    }
+    async popularRelate(label) {
+        return await (0, rxjs_1.firstValueFrom)(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/popular/' + label + '?n=5').pipe((0, rxjs_1.map)(res => res.data)));
     }
 };
 RecommendService = __decorate([

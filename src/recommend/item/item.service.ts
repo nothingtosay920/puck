@@ -22,8 +22,8 @@ export class RecommendItemService {
     return await firstValueFrom(this.httpService.get(process.env.RECOMMEND_SERVICE + '/item' + `/${id}`).pipe(map(res => res.data)))
   }
 
-  async getItemList() {
-    return await firstValueFrom(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/items').pipe(map(res => res.data)))
+  async getItemNeighbors(id: string): Promise<ItemRes> {
+    return await firstValueFrom(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/item/' + id + '/neighbors').pipe(map(res => res.data)))
   }
 
   async patchItem(id: string) {

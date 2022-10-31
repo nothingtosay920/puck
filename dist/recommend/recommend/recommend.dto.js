@@ -9,8 +9,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RecommendItem = void 0;
+exports.RelateRecommendRes = exports.RecommendRes = exports.RecommendItem = void 0;
 const graphql_1 = require("@nestjs/graphql");
+const article_dto_1 = require("../../article/article.dto");
 let RecommendItem = class RecommendItem {
 };
 __decorate([
@@ -25,4 +26,32 @@ RecommendItem = __decorate([
     (0, graphql_1.ObjectType)()
 ], RecommendItem);
 exports.RecommendItem = RecommendItem;
+let RecommendRes = class RecommendRes {
+};
+__decorate([
+    (0, graphql_1.Field)(() => [article_dto_1.ArticleData]),
+    __metadata("design:type", Array)
+], RecommendRes.prototype, "data", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", Number)
+], RecommendRes.prototype, "next", void 0);
+RecommendRes = __decorate([
+    (0, graphql_1.ObjectType)()
+], RecommendRes);
+exports.RecommendRes = RecommendRes;
+let RelateRecommendRes = class RelateRecommendRes {
+};
+__decorate([
+    (0, graphql_1.Field)(() => [String]),
+    __metadata("design:type", Array)
+], RelateRecommendRes.prototype, "data", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", Number)
+], RelateRecommendRes.prototype, "next", void 0);
+RelateRecommendRes = __decorate([
+    (0, graphql_1.ObjectType)()
+], RelateRecommendRes);
+exports.RelateRecommendRes = RelateRecommendRes;
 //# sourceMappingURL=recommend.dto.js.map

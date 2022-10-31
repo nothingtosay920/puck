@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Inject, Injectable, Module, SetMetadata } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Inject, Injectable, Module, SetMetadata, UnauthorizedException } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { AuthenticationError } from 'apollo-server-express';
 import { Request } from 'express';
@@ -15,7 +15,7 @@ export class UserAuthGuard implements CanActivate {
     const req: Request = ctx.getContext().req;
     let uid = req.session['uid']
     if (!uid) {
-      throw new AuthenticationError('UNAUTHENTICATED')
+      throw new UnauthorizedException('用户未登录')
     } 
     
     const userRole = (await this.roleService.findOne(uid)).role

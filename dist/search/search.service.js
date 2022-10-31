@@ -11,15 +11,29 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SearchService = void 0;
 const common_1 = require("@nestjs/common");
-const app_service_1 = require("../app.service");
+const elasticsearch_1 = require("@nestjs/elasticsearch");
 let SearchService = class SearchService {
-    constructor(prisma) {
-        this.prisma = prisma;
+    constructor(client) {
+        this.client = client;
+    }
+    async Search(query, page) {
+        const searchRes = await this.client.search({
+            index: 'articles',
+            body: {
+                size: 10,
+                from: 10 * page,
+                query: {
+                    match: { title: query }
+                }
+            }
+        });
+        const data = searchRes.hits.hits.map((item) => item._id);
+        return data;
     }
 };
 SearchService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [app_service_1.AppService])
+    __metadata("design:paramtypes", [elasticsearch_1.ElasticsearchService])
 ], SearchService);
 exports.SearchService = SearchService;
 //# sourceMappingURL=search.service.js.map

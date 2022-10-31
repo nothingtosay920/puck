@@ -2,193 +2,26 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type ArticleDTO {
-  article: String
-  description: String
-  muster: String
-  title: String
-  id: String
-  article_img: String!
-  type: String!
-  edit_time: String!
-  author: String
-  gather: String
-  labels: [String!]!
-  categorys: String!
-  zan: String!
-  hot: String!
-  outer_id: String!
-  befollowed: Float
-  zan_status: Boolean!
-  follow_status: Boolean!
-  collection_status: Boolean!
-  author_img: String!
-  author_name: String!
-  timestamp: String
+interface BeFollowedData {
+  uuid: String!
 }
 
-type RecordsRes {
-  article_data: [ArticleDTO!]!
-  next: Float!
-}
-
-type Polymerization {
-  author: String
-  author_name: String
-  muster_id: String
-  gather_id: String
-  muster_img: String
-  article_data: Float
-  name: String
-  type: String
-  description: String
-  article_id: String
-}
-
-type DynamicRes {
-  description: String
-  title: String
-  id: String
-  article_img: String
-  acticle_type: String
-  edit_time: String
-  author: String
-  zan: String
-  hot: String
-  outer_id: String
-  author_img: String
-  author_name: String
-  name: String
-  user_img: String
-  open_id: String
-  zan_status: Boolean!
-  follow_status: Boolean!
-  collection_status: Boolean!
-  labels: [String!]!
-  categorys: String!
-  type: String
-}
-
-type DraftArticle {
-  labels: [String!]!
-  categorys: String
-  description: String
-  gather_id: String
-  article_data: [ArticleDTO!]
-  title: String
-  article: String
-  article_img: String
-  type: String
-  muster: String
-  id: String
-}
-
-type WritingList {
-  muster_data: [ArticleIdDto!]!
-  gather_data: [ArticleIdDto!]!
-}
-
-type OuterId {
-  outer_id: String!
-}
-
-type ArticleIdDto {
-  article_data: [OuterId!]!
-}
-
-type collectionList {
-  list: [collection!]!
-}
-
-type collection {
-  title: String!
-  hot: String!
-  zan: String!
-  edit_time: String!
-}
-
-type collectionArticleRes {
-  list: [ArticleDTO!]!
-  next: Float!
-  count: Float!
-}
-
-type LabelTypeInArticle {
-  label_id: String!
-  name: String
-  description: String
-}
-
-type Labels {
-  Labels: LabelTypeInArticle!
-}
-
-type AllArticles {
-  title: String!
-  zan: String!
-  hot: String!
-  outer_id: String!
-  article_img: String!
-  article_type: String!
-  description: String!
-  edit_time: String!
-  labels: [Labels!]!
-}
-
-type AllArticlesRes {
-  next: Float!
-  count: Float!
-  AllArticles: [AllArticles!]!
-}
-
-type AddArticleRes {
-  article_id: String!
-}
-
-type AuthorInfo {
-  outer_id: String!
-  uuid_user: String!
+type UserData implements UserInfoInter {
   name: String!
   user_img: String!
+  uuid: String!
 }
 
-type MusterArticleById {
-  muster_img: String!
+interface UserInfoInter {
   name: String!
-  author: AuthorInfo!
-  article_data: [ArticleDTO!]!
-  description: String!
-}
-
-type MusterColumn {
-  name: String!
-  description: String!
-  type: String!
-  muster_id: String!
-  muster_img: String!
-  authorId: String!
-}
-
-type LoginDTO {
-  message: String!
-  code: Float!
-}
-
-type LogOutDto {
-  code: Float!
+  user_img: String!
+  uuid: String!
 }
 
 type UsersDATA {
   name: String
   user_img: String
-  open_id: String
-}
-
-type Draft {
-  article_id: String!
-  time_stmap: String!
-  type: String!
-  title: String!
+  uuid: String
 }
 
 type Dynamic {
@@ -209,13 +42,38 @@ type BaseUserInfo {
   name: String!
 }
 
-type BaseMusterInfo {
-  muster_data: [BaseMusterData!]!
+type BaseMusterArticle {
+  outer_id: String
 }
 
 type BaseMusterData {
-  name: String
-  muster_id: String!
+  gather_name: String
+  gather_id: String
+  gather_img: String
+  article_description: String
+  article_type: String
+  articles: [BaseMusterArticle!]!
+}
+
+type InfoReadData implements InfoReadDataInter {
+  reading_time: String!
+}
+
+interface InfoReadDataInter {
+  reading_time: String!
+}
+
+type MessageData {
+  timestamp: String!
+  title: String!
+  article_id: String!
+  article_type: String!
+  info: InfoReadData!
+}
+
+type MessageDataRes {
+  data: [MessageData!]!
+  next: Float!
 }
 
 type Label {
@@ -225,113 +83,322 @@ type Label {
   label_id: String!
 }
 
-type Categorylabel {
-  name: String!
-  description: String!
-  label_id: String!
+type ParalArticleInfo implements ParalArticleInfoInter {
+  title: String!
+  outer_id: String!
 }
 
-type Category {
+interface ParalArticleInfoInter {
+  title: String!
+  outer_id: String!
+}
+
+type BeFollowed implements BeFollowedInter {
+  article_id: String!
+  user_id: String!
+}
+
+interface BeFollowedInter {
+  article_id: String!
+  user_id: String!
+}
+
+type Draft implements DraftInter {
+  article_id: String!
+  time_stmap: String!
+  user_id: String!
+}
+
+interface DraftInter {
+  article_id: String!
+  time_stmap: String!
+  user_id: String!
+}
+
+type Collection implements CollectionInter {
+  collection_id: Float!
+  article_id: String!
+  user_id: String!
+}
+
+interface CollectionInter {
+  collection_id: Float!
+  article_id: String!
+  user_id: String!
+}
+
+type Zan implements ZanInter {
+  article_id: String!
+  authorId: String!
+}
+
+interface ZanInter {
+  article_id: String!
+  authorId: String!
+}
+
+type Category implements CategoryInter {
   name: String!
   description: String!
   category_id: String!
-  labels: [Categorylabel!]!
+  labels: [Label!]!
+}
+
+interface CategoryInter {
+  name: String!
+  description: String!
+  category_id: String!
+  labels: [Label!]!
+}
+
+type GatherRes implements GatherResInterface {
+  articles: [ParalArticleInfo!]!
+  gather_id: String!
+  gather_name: String!
+  article_type: String!
+}
+
+interface GatherResInterface {
+  articles: [ParalArticleInfo!]!
+  gather_id: String!
+  gather_name: String!
+  article_type: String!
+}
+
+type ArticleData implements ArticleInter {
+  id: Float!
+  title: String!
+  outer_id: String!
+  article: String!
+  description: String!
+  hot: Float!
+  gather_id: String!
+  article_img: String!
+  article_type: String!
+  edit_time: String!
+  release: Boolean!
+  author: UserData
+  zan_status: Boolean
+  collection_status: Boolean
+  follow_status: Boolean
+  follow_user: Boolean
+  zan: [Zan!]!
+  beFollowed: [BeFollowed!]
+  collection: [Collection!]
+  draft: [Draft!]!
+  labels: [Label!]!
+  categorys: [Category!]!
+  gather: GatherRes
+}
+
+interface ArticleInter {
+  id: Float!
+  title: String!
+  outer_id: String!
+  article: String!
+  description: String!
+  hot: Float!
+  gather_id: String!
+  article_img: String!
+  article_type: String!
+  edit_time: String!
+  release: Boolean!
+  author: UserData
+}
+
+type RecordsArticleData implements ArticleInter {
+  id: Float!
+  title: String!
+  outer_id: String!
+  article: String!
+  description: String!
+  hot: Float!
+  gather_id: String!
+  article_img: String!
+  article_type: String!
+  edit_time: String!
+  release: Boolean!
+  author: UserData
+  timestamp: String!
+  zan: [Zan!]!
+}
+
+type RecordsDataPagenation {
+  data: [RecordsArticleData!]!
+  next: Float!
+}
+
+type ArticleDataPagenation {
+  data: [ArticleData!]!
+  next: Float!
+}
+
+type GatherData implements GatherInter {
+  gather_name: String!
+  article_description: String!
+  type: String!
+  gather_id: String!
+  gather_img: String!
+  authorId: String!
+  articles: [ArticleData!]!
+  article_type: String!
+  author: UserData
+}
+
+interface GatherInter {
+  gather_name: String!
+  article_description: String!
+  type: String!
+  gather_id: String!
+  gather_img: String!
+  authorId: String!
+  articles: [ArticleData!]!
+  article_type: String!
+  author: UserData
+}
+
+type AllArticlesInfo implements GatherInter {
+  gather_name: String!
+  article_description: String!
+  type: String!
+  gather_id: String!
+  gather_img: String!
+  authorId: String!
+  articles: [ArticleData!]!
+  article_type: String!
+  author: UserData!
+}
+
+type AllArticlesPagenation {
+  data: [AllArticlesInfo!]!
+  next: Float!
+}
+
+type AllGatherPagenation {
+  data: [GatherData!]!
+  next: Float!
+}
+
+type WritingArticle {
+  type: String!
+  gather_id: String!
+  gather_name: String!
+  gather_img: String!
+  category: String!
+  article_description: String!
+  labels: [String!]!
+  article_data: [ArticleData!]!
+}
+
+type ArticlePanelStatus implements ArticlePanelStatusInter {
+  zan_status: Boolean!
+  collect_status: Boolean!
+  follow_status: Boolean!
+}
+
+interface ArticlePanelStatusInter {
+  zan_status: Boolean!
+  collect_status: Boolean!
+  follow_status: Boolean!
+}
+
+type UserBeFollowed implements UserBeFollowedInter {
+  info: [BeFollowedData!]!
+}
+
+interface UserBeFollowedInter {
+  info: [BeFollowedData!]!
+}
+
+type RecommendRes {
+  data: [ArticleData!]!
+  next: Float!
+}
+
+type RelateRecommendRes {
+  data: [String!]!
+  next: Float!
 }
 
 type Query {
-  hello: String!
-  getArticleById(article_id: String!): ArticleDTO!
-  getArticleByIdNotFB(article_id: String!): ArticleDTO!
-  getRecords(page: Float!): RecordsRes!
-  getWritingArticleById(article_id: String!): DraftArticle!
-  getUserSavedApi: collectionList!
-  getDraftArticleById(article_id: String!): DraftArticle!
-  dynamicApi(content: String!, type: String!): DynamicRes!
-  getCollectionArticles(page: Float!): collectionArticleRes!
-  removeMusterArticleById(id: String!): Float!
-  getMusterColumn: [MusterColumn!]!
+  getArticleById(article_id: String!, token: String): ArticleData!
+  getArticleByIdNotFB(article_id: String!): ArticleData!
+  removeArticleById(id: String!): Float!
+  getRecords(page: Float!): RecordsDataPagenation!
+  Search(query: String!, page: Float!): ArticleDataPagenation!
+  SearchAuthorArticle(query: String!, author: String!, page: Float!): AllArticlesPagenation!
+  SearchAllArticle(query: String!, page: Float!): ArticleDataPagenation!
+  getUserSavedApi: ArticleDataPagenation!
+  dynamicApi(content: String!, type: String!): ArticleData!
+  getDraft(page: Float!): ArticleDataPagenation!
+  getCollectionArticles(page: Float!): ArticleDataPagenation!
+  indexPanelArticle: Float!
+  getArticleNeighbors(article_id: String!): Float!
+  getUserMessage(page: Float!): MessageDataRes
+  getWritingArticle(article_id: String!): WritingArticle!
+  getArticlePanelStatus(artcle_id: String!): ArticlePanelStatus!
+  getMusterColumn: [GatherData!]!
+  getColumnArticles(data: String!): GatherData!
   getUserInfo: BaseUserInfo!
-  getDraft: [Draft!]!
   getDynamic(page: Float!): DynamicApiRes!
-  getBaseMusterInfo: BaseMusterInfo!
-  saveArticle(data: String!): Float!
-  getAllMuster(page: Float!): [Polymerization!]!
-  getMusterInfoById(mid: String!): MusterArticleById!
-  getGatherArtilces: [Polymerization!]!
-  getAllArticles(page: Float!): AllArticlesRes!
-  getWritingArticle(uid: String!): WritingList!
-  getUserData: UsersDATA!
-  getBeFollowedNum: Float!
-  getBeFollowedStatus: Boolean!
+  getBaseMusterInfo: [BaseMusterData!]
+  getSingleInfo: [ArticleData!]!
+  getAllColumnArtilces(page: Float!): AllGatherPagenation!
+  getGatherArtilces: [GatherData!]!
+  getAllArticlesPagenation(page: Float!): AllArticlesPagenation!
+  getAllArticles: [AllArticlesInfo!]!
+  getUserData: UsersDATA
+  getBeFollowedNum: UserBeFollowed!
+  getUserRecommend(page: Float!): [String!]
   getLabels: [Label!]!
   putLabel(id: String!, category: String!, desc: String!): Float!
   getCategorys: [Category!]!
-  recommendList(label: RecommendArticles!): [ArticleDTO!]!
+  recommendList(label: String!, newest: String!, page: Float!): RecommendRes
+  userRecommend(page: Float!): RelateRecommendRes!
+  relateRecommend(label: String!): [ArticleData!]!
   emit: Float!
   setListen: Float!
 }
 
-input RecommendArticles {
-  labels: [LabelType!]!
-}
-
-input LabelType {
-  label: String!
-}
-
 type Mutation {
-  addZan(data: String!, type: String!): Float!
-  followedArticle(id: String!, type: String!): Float!
-  Login(phone: String!): LoginDTO!
-  addMuster(data: MusterInput!): AddArticleRes!
-  savedMuster(data: MusterInput!): Float!
-  addGather(data: GatherInput!): AddArticleRes!
-  saveGather(data: GatherInput!): Float!
-  createMuster(data: CMuster!): Float!
-  LogOut: LogOutDto!
-  followedUser(uid: String!, followed_id: String!): Float!
+  insertFeeback(article_id: String!, vid: String!): Float!
+  collectArticle(id: String!): Float!
+  followArticle(article_id: String!): Float!
+  Login(phone: String!): Float!
+  addArticle(data: SavedArticleInput!): Float!
+  savedArticle(data: SavedArticleInput!): Float!
+  createMuster(data: GatherInput!): Float!
+  addZan(data: String!): Float!
+  LogOut: Float!
+  followedUser(followed_id: String!): Float!
   createManyLabels(data: CreateLabelInput!): Label!
   createCategory(data: CreateCategoryInput!): Category!
 }
 
-input MusterInput {
-  article_data: MusterArticle!
-  category: String
-  labels: [LabelType!]!
-  muster_id: String!
-  name: String
-  muster_article_id: String
-  muster_img: String
-  muster_desc: String
+input SavedArticleInput {
+  gather_name: String
+  article_type: String!
+  article_description: String
+  gather_img: String
+  article_data: [ArticleInput!]!
+  labels: [String!]!
+  gather_id: String!
+  category: String!
 }
 
-input MusterArticle {
+input ArticleInput {
   title: String!
-  description: String!
+  outer_id: String!
   article: String!
-  articleImg: String!
+  article_img: String!
+  edit_time: String!
+  description: String
 }
 
 input GatherInput {
-  article_data: [GatherArticle!]!
-  category: String!
-  labels: [LabelType!]!
-  description: String!
-  gather_id: String!
-  gather_article_id: String!
+  gather_name: String!
+  article_description: String!
   gather_img: String!
-}
-
-input GatherArticle {
-  title: String!
-  article: String!
-  article_img: String!
-}
-
-input CMuster {
-  name: String!
-  desc: String!
-  muster_img: String!
 }
 
 input CreateLabelInput {

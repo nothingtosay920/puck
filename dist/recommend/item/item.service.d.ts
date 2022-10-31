@@ -7,7 +7,7 @@ export declare class RecommendItemService {
     insertItem(data: Item): Promise<ItemRes>;
     insertItemList(data: Item[]): Promise<any>;
     getItemById(id: string): Promise<any>;
-    getItemList(): Promise<any>;
+    getItemNeighbors(id: string): Promise<ItemRes>;
     patchItem(id: string): Promise<any>;
     deleteItemByItemId(id: string): Promise<any>;
 }

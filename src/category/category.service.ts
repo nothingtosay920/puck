@@ -21,6 +21,9 @@ export class CategoryService {
             description: true
           }
         }
+      },
+      orderBy: {
+        category_id: 'asc'
       }
     })
   }

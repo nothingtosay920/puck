@@ -9,7 +9,6 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Category = void 0;
 const graphql_1 = require("@nestjs/graphql");
 let Categorylabel = class Categorylabel {
 };
@@ -28,26 +27,4 @@ __decorate([
 Categorylabel = __decorate([
     (0, graphql_1.ObjectType)()
 ], Categorylabel);
-let Category = class Category {
-};
-__decorate([
-    (0, graphql_1.Field)(),
-    __metadata("design:type", String)
-], Category.prototype, "name", void 0);
-__decorate([
-    (0, graphql_1.Field)(),
-    __metadata("design:type", String)
-], Category.prototype, "description", void 0);
-__decorate([
-    (0, graphql_1.Field)(),
-    __metadata("design:type", String)
-], Category.prototype, "category_id", void 0);
-__decorate([
-    (0, graphql_1.Field)(() => [Categorylabel]),
-    __metadata("design:type", Array)
-], Category.prototype, "labels", void 0);
-Category = __decorate([
-    (0, graphql_1.ObjectType)()
-], Category);
-exports.Category = Category;
 //# sourceMappingURL=category.dto.js.map

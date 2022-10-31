@@ -17,15 +17,28 @@ const role_service_1 = require("../role/role.service");
 const users_model_1 = require("../users/users.model");
 const category_service_1 = require("../category/category.service");
 const label_service_1 = require("../label/label.service");
+const jwt_1 = require("@nestjs/jwt");
+const constants_1 = require("../jwt/constants");
+const jwt_strategy_1 = require("../jwt/jwt.strategy");
+const search_module_1 = require("../search/search.module");
+const feedback_service_1 = require("../recommend/feedback/feedback.service");
+const recommend_service_1 = require("../recommend/recommend/recommend.service");
+const info_service_1 = require("../info/info.service");
 let AuthModule = class AuthModule {
 };
 AuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            search_module_1.SearchModule,
             passport_1.PassportModule,
             users_model_1.UsersModule,
+            jwt_1.JwtModule.register({
+                secret: constants_1.jwtConstants.secret,
+                signOptions: { expiresIn: '7d' },
+            }),
+            search_module_1.SearchModule
         ],
-        providers: [auth_service_1.AuthService, app_service_1.AppService, auth_resolver_1.AuthResolver, role_service_1.RoleService, users_service_1.UsersService, category_service_1.CategoryService, label_service_1.LabelService],
+        providers: [info_service_1.InfoService, auth_service_1.AuthService, app_service_1.AppService, auth_resolver_1.AuthResolver, role_service_1.RoleService, users_service_1.UsersService, category_service_1.CategoryService, label_service_1.LabelService, jwt_strategy_1.JwtStrategy, feedback_service_1.FeedbackService, recommend_service_1.RecommendService],
         exports: [role_service_1.RoleService]
     })
 ], AuthModule);

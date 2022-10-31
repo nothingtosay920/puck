@@ -4,15 +4,15 @@ export declare class CategoryResolver {
     private readonly categoryService;
     constructor(categoryService: CategoryService);
     getCategorys(): Promise<{
-        description: string;
         labels: {
-            description: string;
             category: string;
+            description: string;
             name: string;
             label_id: string;
         }[];
-        name: string;
+        description: string;
         category_id: string;
+        name: string;
     }[]>;
     createCategory(data: CreateCategoryInput): Promise<import(".prisma/client").Category>;
 }

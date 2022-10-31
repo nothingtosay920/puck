@@ -12,85 +12,75 @@ datasource db {
 
 model User {
   id Int @default(autoincrement()) @id
-  open_id String @unique
-  uuid_user String @unique 
+  uuid String @unique 
   phone String  @unique
   name  String @unique
   user_img String 
-  message Message[]
-  muster_data  Muster[]
-  gather_data Gather[]
+  articles Gather[]
   user_role Role[]
-  categorys CategoryUserMap[]
+  categorys Category[]
   collection Collection[]
-  follow Follow[]
-  be_follow BeFollow[]
   dynamic Dynamic[]
   record Records[]
   draft Draft[]
-  zan_list UserZan[]
+  zan Zan[]
+  reading Reading[]
+  info Info[] // 被关注的人
+  follow Follow[]
+}
+
+
+model Info {
+  id Int @default(autoincrement()) @id
+  uuid String @unique 
+  reading_time String
+  message MessageData[]
+  article Article[]
+  user User[] // 被关注
+}
+
+model Follow {
+  id Int @default(autoincrement()) @id
+  users User @relation(fields: [user_id], references: [uuid], onDelete: Cascade, onUpdate: Cascade)
+  user_id String
+  follow_id String
 }
 
 // 消息
-model Message {
-  id Int @default(autoincrement()) @id
-  reading_time String
-  message MessageData[]
-  user User @relation(fields: [user_id], references: [uuid_user])
-  user_id String
-}
-
 model MessageData {
   id Int @default(autoincrement()) @id
-  user_id String
-  artile_id String
-  time_stamp String
-  message Message @relation(references: [id], fields: [data_id])
-  data_id Int
+  timestamp String
+  title String
+  article_id String @unique
+  article_type ArticleType
+  info Info @relation(references: [uuid], fields: [info_id], onUpdate: Cascade, onDelete: Cascade)
+  info_id String
 }
 
 model Draft {
   id Int @default(autoincrement()) @id
-  article_id String @unique
+  article_id String 
   time_stmap String
-  type String
-  user User @relation(fields: [user_id], references: [uuid_user])
+  user User @relation(fields: [user_id], references: [uuid], onDelete: Cascade, onUpdate: Cascade)
   user_id String
-  title String
+  draft String @unique
 }
 
-
-// 文章被关注
-model MusterArticleBeFollowed {
-  id Int @default(autoincrement()) @id
-  muster_article MusterArticle @relation(fields: [muster_article_id], references: [outer_id], onDelete: Cascade)
-  muster_article_id String
-  user_id String
-}
-
-model GatherArticleBeFollowed {
-  id Int @default(autoincrement()) @id
-  gather_article GatherArticle @relation(fields: [gather_article_id], references: [outer_id], onDelete: Cascade)
-  gather_article_id String
-  user_id String
-}
 
 // 历史记录
 model Records {
   id Int @default(autoincrement()) @id
-  user User @relation(fields: [user_id], references: [uuid_user])
+  user User @relation(fields: [user_id], references: [uuid])
   user_id String
-  article_id String @unique
-  timestamp String
+  article Article @relation(fields: [article_id], references: [outer_id], onDelete: Cascade, onUpdate: Cascade)
+  article_id String 
+  timestamp String 
   percentage String
+  record String @unique
 }
 
-model BeFollow {
-  id Int @default(autoincrement()) @id
-  user User @relation(fields: [user_id], references: [uuid_user])
-  user_id String
-  be_followed String
-}
+
+
 
 enum DynamicType {
   ZAN
@@ -106,100 +96,76 @@ model Dynamic {
   content String
   type DynamicType
   time_tamp String
-  user User @relation(fields: [user_id], references: [uuid_user])
-  user_id String
+  user User[]
 }
 
 // 收藏
 model Collection {
   collection_id Int @default(autoincrement()) @id
-  article_id String @unique
-  user User @relation(fields: [user_id], references: [uuid_user])
+  article Article @relation(fields: [article_id], references: [outer_id], onDelete: Cascade, onUpdate: Cascade)
+  article_id String
+  user User @relation(fields: [user_id], references: [uuid], onDelete: Cascade, onUpdate: Cascade)
   user_id String
+  collect_id String @unique
 }
 
-model Follow {
-  follow_id Int @default(autoincrement()) @id
-  follow_user String
-  user User @relation(fields: [user_id], references: [uuid_user])
-  user_id String
-}
-
-enum MusterType {
+enum ArticleType {
   SINGLE
-  MUSTER
+  COLUMN
+  GATHER
 }
 
-model Muster {
-  id Int @default(autoincrement()) @id
-  name String @default("")
-  description String
-  type MusterType @default(MUSTER)
-  muster_id String @unique
-  muster_img String
-  author User @relation(fields: [authorId], references: [uuid_user])
-  authorId  String
-  article_data MusterArticle[]
-}
 
 model Gather {
   id Int @default(autoincrement()) @id
-  description String
-  gather_img String
+  gather_name String @default("")
+  article_description String @default("")
+  article_type ArticleType @default(COLUMN)
   gather_id String @unique
-  author User @relation(fields: [authorId], references: [uuid_user])
+  gather_img String @default("")
+  articles Article[] 
+  author User @relation(fields: [authorId], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
   authorId  String
-  article_data GatherArticle[]
-  labels GatherLabelMap[] 
-  categorys CategoryGatherMap[]
+  gather_release Boolean @default(false)
 }
 
-
-model UserZan {
-  id Int @default(autoincrement()) @id
-  author User @relation(fields: [authorId], references: [uuid_user])
-  authorId  String
-  article_id String @unique
-  timestamp String
-}
-
-model GatherArticle {
-  id Int @default(autoincrement()) @id
-
-  title String
-  outer_id String @unique
-  article String
-  hot Int @default(0)
-  readings Int @default(0)
-  zan Int @default(0)
-  author Gather @relation(fields: [gather], references: [gather_id], onDelete: NoAction)
-  gather String
-  article_img String
-  article_type String @default("GATHER") 
-  edit_time String
-  release Boolean @default(false)
-  befollowed GatherArticleBeFollowed[]
-}
-
-model MusterArticle {
+model Article {
   id Int @default(autoincrement()) @id
   title String
-  
-  description String
-  outer_id String @unique
+  outer_id String @unique 
   article String
+  description String @default("")
   hot Int @default(0)
-  readings Int @default(0)
-  zan Int @default(0)
-  edit_time String
-  data Muster @relation(fields: [muster], references: [muster_id], onDelete: NoAction)
-  muster String
-  release Boolean @default(false)
+  readings Reading[]
+  zan Zan[]
+  gather Gather @relation(fields: [gather_id], references: [gather_id], onUpdate: Cascade, onDelete: Cascade)
+  gather_id String
   article_img String
-  article_type String @default("MUSTER") 
-  labels MusterLabelMap[] 
-  categorys CategoryMusterMap[]
-  befollowed MusterArticleBeFollowed[]
+  edit_time String
+  release Boolean @default(false)
+  labels Label[]
+  categorys Category[]
+  records Records[]
+  collection Collection[]
+  info Info[]
+}
+
+model Zan {
+  id Int @default(autoincrement()) @id
+  article Article @relation(fields: [article_id], references: [outer_id], onUpdate: Cascade, onDelete: Cascade)
+  article_id String
+  author User @relation(fields: [authorId], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  authorId  String
+  zan_id String @unique
+}
+
+model Reading {
+  id Int @default(autoincrement()) @id
+  article Article @relation(fields: [article_id], references: [outer_id], onUpdate: Cascade, onDelete: Cascade)
+  article_id String
+  author User @relation(fields: [authorId], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  authorId  String
+  reading_id String @unique
 }
 
 enum RoleType {
@@ -208,33 +174,9 @@ enum RoleType {
 }
 
 model Role {
-  user_uuid User @relation(fields: [uuid], references: [uuid_user])
+  user_uuid User @relation(fields: [uuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
   uuid String @unique
   role RoleType @default(USER)
-}
-
-model CategoryUserMap {
-  id    Int    @id @default(autoincrement())
-  User User @relation(fields: [user_uuid], references: [uuid_user])
-  user_uuid String
-  Category Category @relation(fields: [category], references: [category_id])
-  category String 
-}
-
-model CategoryMusterMap {
-  id    Int    @id @default(autoincrement())
-  MusterArticle MusterArticle @relation(fields: [article_id], references: [outer_id], onDelete: Cascade)
-  article_id String
-  Category Category @relation(fields: [category], references: [category_id], onDelete: Cascade)
-  category String 
-}
-
-model CategoryGatherMap {
-  id    Int    @id @default(autoincrement())
-  GatherArticle Gather @relation(fields: [article_id], references: [gather_id], onDelete: Cascade)
-  article_id String
-  Category Category @relation(fields: [category], references: [category_id])
-  category String 
 }
 
 model Category {
@@ -243,33 +185,16 @@ model Category {
   description String @unique
   category_id String @unique
   labels Label[]
-  CategoryUserMap CategoryUserMap[]
-  CategoryMusterMap CategoryMusterMap[]
-  CategoryGatherMap CategoryGatherMap[]
-}
-
-model MusterLabelMap {
-  id    Int    @id @default(autoincrement())
-  MusterArticle MusterArticle @relation(fields: [article_id], references: [outer_id], onDelete: Cascade)
-  article_id String
-  Labels Label @relation(fields: [label], references: [label_id])
-  label String 
-}
-
-model GatherLabelMap {
-  id    Int    @id @default(autoincrement())
-  GatherArticle Gather @relation(fields: [article_id], references: [gather_id], onDelete: Cascade)
-  article_id String
-  Labels Label @relation(fields: [label], references: [label_id])
-  label String 
+  user User[]
+  gather Article[]
 }
 
 model Label {
+  id    Int    @id @default(autoincrement())
   label_id String @unique
   name String @unique
   description String @unique
-  categorys Category @relation(fields: [category], references: [category_id], onDelete: Cascade)
+  categorys Category @relation(fields: [category], references: [category_id], onUpdate: Cascade, onDelete: Cascade)
   category String 
-  MusterLabelMap MusterLabelMap[]
-  GatherLabelMap GatherLabelMap[]
+  gather Article[]
 }

@@ -4,11 +4,7 @@ import { PrismaClient } from '@prisma/client';
 @Injectable()
 export class AppService extends PrismaClient
   implements OnModuleInit {
-
-  getHello() {
-    return 'response.cookie()'
-  }
-
+x
   async onModuleInit() {
     await this.$connect();
   }

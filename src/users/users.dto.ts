@@ -1,31 +1,13 @@
 import { Field, Int, ObjectType } from "@nestjs/graphql";
+import { ArticleType } from "@prisma/client";
 import { IsEmail, IsNotEmpty, isNotEmpty, IsObject, IsString, MaxLength } from "class-validator";
+import { ArticleData } from "src/article/article.dto";
+import { InfoReadDataInter, UserInfoInter } from "./users.interface";
 
-@ObjectType()
-export class UsersDTO {
-
-  @IsString()
-  @MaxLength(11)
-  @Field({ nullable: false})
-  phone: string;
-}
-
-@ObjectType()
-export class LoginDTO {
-  @Field({ nullable: false})
-  @IsString()
-  message: string
-
-  @Field({nullable: false})
-  code: number
-}
-
-@ObjectType()
-export class LogOutDto {
-  @Field({nullable: false})
-  code: number
-}
-
+@ObjectType({
+  implements: [UserInfoInter] 
+})
+export class UserData {}
 
 @ObjectType()
 export class UsersDATA {
@@ -39,22 +21,7 @@ export class UsersDATA {
 
   @Field({ nullable: true })
   @IsString()
-  open_id: string
-}
-
-@ObjectType()
-export class Draft {
-  @Field({nullable: false})
-  article_id: string
-
-  @Field({nullable: false})
-  time_stmap: string
-
-  @Field({nullable: false})
-  type: string
-
-  @Field({nullable: false})
-  title: string
+  uuid: string
 }
 
 @ObjectType()
@@ -95,15 +62,67 @@ export class BaseUserInfo {
 
 @ObjectType()
 export class BaseMusterInfo {
-  @Field(() => [BaseMusterData])
-  muster_data: BaseMusterData[]
+  @Field(() => [BaseMusterData], {nullable: true})
+  data: BaseMusterData[]
+
+  @Field({nullable: false})
+  next: number
+}
+
+
+@ObjectType()
+export class BaseMusterArticle {
+  @Field({nullable: true})
+  outer_id: string
 }
 
 @ObjectType()
 export class BaseMusterData {
   @Field({nullable: true})
-  name: string
+  gather_name: string
+
+  @Field({nullable: true})
+  gather_id: string
+
+  @Field({nullable: true})
+  gather_img: string
+  @Field({nullable: true})
+  article_description: string
+  @Field({nullable: true})
+  article_type: string
+
+  @Field(() => [BaseMusterArticle])
+  articles: BaseMusterArticle[]
+}
+ 
+@ObjectType({
+  implements: [InfoReadDataInter]
+})
+export class InfoReadData{}
+
+@ObjectType()
+export class MessageData{
+  @Field({nullable: false})
+  timestamp: string;
 
   @Field({nullable: false})
-  muster_id: string
+  title: string;
+
+  @Field({nullable: false})
+  article_id: string;
+
+  @Field({nullable: false})
+  article_type: ArticleType
+
+  @Field({nullable: false})
+  info: InfoReadData
+}
+
+@ObjectType()
+export class MessageDataRes {
+  @Field(() =>[MessageData])
+  data: MessageData[]
+
+  @Field({nullable: false})
+  next: number
 }

@@ -10,9 +10,6 @@ exports.AppService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 let AppService = class AppService extends client_1.PrismaClient {
-    getHello() {
-        return 'response.cookie()';
-    }
     async onModuleInit() {
         await this.$connect();
     }

@@ -23,6 +23,7 @@ const task_module_1 = require("./task/task.module");
 const emit_module_1 = require("./emit/emit.module");
 const statusMonitor_1 = require("./statusMonitor");
 const nestjs_status_monitor_1 = require("nestjs-status-monitor");
+const search_module_1 = require("./search/search.module");
 let AppModule = class AppModule {
 };
 AppModule = __decorate([
@@ -47,6 +48,7 @@ AppModule = __decorate([
                     credentials: true,
                 },
             }),
+            search_module_1.SearchModule
         ],
         providers: [app_service_1.AppService, app_resolver_1.AppResolver],
     })

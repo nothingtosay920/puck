@@ -10,10 +10,10 @@ export class TasksService {
   constructor(private readonly httpService: HttpService) {}
   private readonly logger = new Logger(TasksService.name);
 
-  @Interval(1 * 1000 * 30) 
+  @Interval(1 * 1000 * 6) 
   handleCron() {
     this.gorse()
-    this.logger.debug('Called when the second is 45');
+    this.logger.debug('Called when the second is 6');
   }
 
   // 维持gorse

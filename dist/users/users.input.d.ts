@@ -1,36 +1,30 @@
+import { ArticleType } from "@prisma/client";
 export declare class UsersInput {
     readonly phone: string;
 }
-export declare class MusterArticle {
+export declare class GatherInput {
+    gather_name: string;
+    article_description: string;
+    gather_img: string;
+}
+export declare class ArticleInput {
     title: string;
-    description: string;
+    outer_id: string;
     article: string;
-    articleImg: string;
+    article_img: string;
+    edit_time: string;
+    description: string;
+}
+export declare class SavedArticleInput {
+    gather_name: string;
+    article_type: ArticleType;
+    article_description: string;
+    gather_img: string;
+    article_data: ArticleInput[];
+    labels: string[];
+    gather_id: string;
+    category: string;
 }
 export declare class LabelType {
     label: string;
-}
-export declare class MusterInput {
-    article_data: MusterArticle;
-    category: string;
-    labels: LabelType[];
-    muster_id: string;
-    name?: string;
-    muster_article_id: string;
-    muster_img: string;
-    muster_desc: string;
-}
-export declare class GatherArticle {
-    title: string;
-    article: string;
-    article_img: string;
-}
-export declare class GatherInput {
-    article_data: GatherArticle[];
-    category: string;
-    labels: LabelType[];
-    description: string;
-    gather_id: string;
-    gather_article_id: string;
-    gather_img: string;
 }

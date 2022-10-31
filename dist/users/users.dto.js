@@ -9,46 +9,19 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BaseMusterData = exports.BaseMusterInfo = exports.BaseUserInfo = exports.DynamicApiRes = exports.Dynamic = exports.Draft = exports.UsersDATA = exports.LogOutDto = exports.LoginDTO = exports.UsersDTO = void 0;
+exports.MessageDataRes = exports.MessageData = exports.InfoReadData = exports.BaseMusterData = exports.BaseMusterArticle = exports.BaseMusterInfo = exports.BaseUserInfo = exports.DynamicApiRes = exports.Dynamic = exports.UsersDATA = exports.UserData = void 0;
 const graphql_1 = require("@nestjs/graphql");
+const client_1 = require("@prisma/client");
 const class_validator_1 = require("class-validator");
-let UsersDTO = class UsersDTO {
+const users_interface_1 = require("./users.interface");
+let UserData = class UserData {
 };
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MaxLength)(11),
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], UsersDTO.prototype, "phone", void 0);
-UsersDTO = __decorate([
-    (0, graphql_1.ObjectType)()
-], UsersDTO);
-exports.UsersDTO = UsersDTO;
-let LoginDTO = class LoginDTO {
-};
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], LoginDTO.prototype, "message", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", Number)
-], LoginDTO.prototype, "code", void 0);
-LoginDTO = __decorate([
-    (0, graphql_1.ObjectType)()
-], LoginDTO);
-exports.LoginDTO = LoginDTO;
-let LogOutDto = class LogOutDto {
-};
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", Number)
-], LogOutDto.prototype, "code", void 0);
-LogOutDto = __decorate([
-    (0, graphql_1.ObjectType)()
-], LogOutDto);
-exports.LogOutDto = LogOutDto;
+UserData = __decorate([
+    (0, graphql_1.ObjectType)({
+        implements: [users_interface_1.UserInfoInter]
+    })
+], UserData);
+exports.UserData = UserData;
 let UsersDATA = class UsersDATA {
 };
 __decorate([
@@ -65,33 +38,11 @@ __decorate([
     (0, graphql_1.Field)({ nullable: true }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], UsersDATA.prototype, "open_id", void 0);
+], UsersDATA.prototype, "uuid", void 0);
 UsersDATA = __decorate([
     (0, graphql_1.ObjectType)()
 ], UsersDATA);
 exports.UsersDATA = UsersDATA;
-let Draft = class Draft {
-};
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], Draft.prototype, "article_id", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], Draft.prototype, "time_stmap", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], Draft.prototype, "type", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], Draft.prototype, "title", void 0);
-Draft = __decorate([
-    (0, graphql_1.ObjectType)()
-], Draft);
-exports.Draft = Draft;
 let Dynamic = class Dynamic {
 };
 __decorate([
@@ -149,25 +100,103 @@ exports.BaseUserInfo = BaseUserInfo;
 let BaseMusterInfo = class BaseMusterInfo {
 };
 __decorate([
-    (0, graphql_1.Field)(() => [BaseMusterData]),
+    (0, graphql_1.Field)(() => [BaseMusterData], { nullable: true }),
     __metadata("design:type", Array)
-], BaseMusterInfo.prototype, "muster_data", void 0);
+], BaseMusterInfo.prototype, "data", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", Number)
+], BaseMusterInfo.prototype, "next", void 0);
 BaseMusterInfo = __decorate([
     (0, graphql_1.ObjectType)()
 ], BaseMusterInfo);
 exports.BaseMusterInfo = BaseMusterInfo;
+let BaseMusterArticle = class BaseMusterArticle {
+};
+__decorate([
+    (0, graphql_1.Field)({ nullable: true }),
+    __metadata("design:type", String)
+], BaseMusterArticle.prototype, "outer_id", void 0);
+BaseMusterArticle = __decorate([
+    (0, graphql_1.ObjectType)()
+], BaseMusterArticle);
+exports.BaseMusterArticle = BaseMusterArticle;
 let BaseMusterData = class BaseMusterData {
 };
 __decorate([
     (0, graphql_1.Field)({ nullable: true }),
     __metadata("design:type", String)
-], BaseMusterData.prototype, "name", void 0);
+], BaseMusterData.prototype, "gather_name", void 0);
 __decorate([
-    (0, graphql_1.Field)({ nullable: false }),
+    (0, graphql_1.Field)({ nullable: true }),
     __metadata("design:type", String)
-], BaseMusterData.prototype, "muster_id", void 0);
+], BaseMusterData.prototype, "gather_id", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: true }),
+    __metadata("design:type", String)
+], BaseMusterData.prototype, "gather_img", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: true }),
+    __metadata("design:type", String)
+], BaseMusterData.prototype, "article_description", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: true }),
+    __metadata("design:type", String)
+], BaseMusterData.prototype, "article_type", void 0);
+__decorate([
+    (0, graphql_1.Field)(() => [BaseMusterArticle]),
+    __metadata("design:type", Array)
+], BaseMusterData.prototype, "articles", void 0);
 BaseMusterData = __decorate([
     (0, graphql_1.ObjectType)()
 ], BaseMusterData);
 exports.BaseMusterData = BaseMusterData;
+let InfoReadData = class InfoReadData {
+};
+InfoReadData = __decorate([
+    (0, graphql_1.ObjectType)({
+        implements: [users_interface_1.InfoReadDataInter]
+    })
+], InfoReadData);
+exports.InfoReadData = InfoReadData;
+let MessageData = class MessageData {
+};
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], MessageData.prototype, "timestamp", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], MessageData.prototype, "title", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], MessageData.prototype, "article_id", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], MessageData.prototype, "article_type", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", InfoReadData)
+], MessageData.prototype, "info", void 0);
+MessageData = __decorate([
+    (0, graphql_1.ObjectType)()
+], MessageData);
+exports.MessageData = MessageData;
+let MessageDataRes = class MessageDataRes {
+};
+__decorate([
+    (0, graphql_1.Field)(() => [MessageData]),
+    __metadata("design:type", Array)
+], MessageDataRes.prototype, "data", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", Number)
+], MessageDataRes.prototype, "next", void 0);
+MessageDataRes = __decorate([
+    (0, graphql_1.ObjectType)()
+], MessageDataRes);
+exports.MessageDataRes = MessageDataRes;
 //# sourceMappingURL=users.dto.js.map

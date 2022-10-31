@@ -15,47 +15,65 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthResolver = void 0;
 const common_1 = require("@nestjs/common");
 const graphql_1 = require("@nestjs/graphql");
+const date_fns_1 = require("date-fns");
 const article_dto_1 = require("../article/article.dto");
-const article_input_1 = require("../article/article.input");
 const user_auth_guard_1 = require("../guard/user-auth.guard");
+const feedback_service_1 = require("../recommend/feedback/feedback.service");
+const recommend_service_1 = require("../recommend/recommend/recommend.service");
+const user_dto_1 = require("../recommend/user/user.dto");
 const users_dto_1 = require("../users/users.dto");
 const users_input_1 = require("../users/users.input");
 const users_service_1 = require("../users/users.service");
 const auth_service_1 = require("./auth.service");
 let AuthResolver = class AuthResolver {
-    constructor(authService, userService) {
+    constructor(authService, userService, feedbackService, recommendService) {
         this.authService = authService;
         this.userService = userService;
+        this.feedbackService = feedbackService;
+        this.recommendService = recommendService;
     }
-    Login(phone, context) {
-        return this.authService.Login(phone, context);
+    async Login(phone, context) {
+        await this.authService.Login(phone, context);
+        return 200;
     }
-    async addMuster(data, context) {
-        return await this.userService.createMuster(data, context.req.session['uid']);
+    async addArticle(data, context) {
+        await this.userService.createArticle(data, context.req.session['uid']);
+        return 200;
     }
-    savedMuster(data, context) {
-        return this.userService.savedMuster(data, context.req.session['uid']);
-    }
-    addGather(data, context) {
-        console.log(data.labels);
-        return this.userService.createGather(data, context.req.session['uid']);
-    }
-    saveGather(data, context) {
-        return this.userService.savedGather(data, context.req.session['uid']);
+    async savedArticle(data, context) {
+        await this.userService.saveArticle(data, context.req.session['uid']);
+        return 200;
     }
     async createMuster(data, context) {
-        await this.userService.cMuster(data, context.req.session['uid']);
+        await this.userService.createColumn(data, context.req.session['uid']);
         return 200;
     }
     async getMusterColumn(context) {
-        return await (await this.userService.getMusterColumn(context.req.session['uid'])).muster_data;
+        const articles = await this.userService.getColumn(context.req.session['uid']);
+        return articles.articles;
     }
-    getUserInfo(context) {
-        return this.userService.getUserInfo(context.req.session['uid']);
+    async getColumnArticles(data) {
+        return await this.userService.getColumnArticle(data);
     }
-    async getDraft(context) {
-        const user = await this.userService.getDraft(context.req.session['uid']);
-        return user.draft;
+    async addZan(id, context) {
+        const uid = context.req.session['uid'];
+        const zan = await (await this.userService.findZan(uid, id)).zan;
+        if (zan.length) {
+            await this.userService.removeZan(uid, id);
+        }
+        else {
+            await this.userService.addZan(uid, id);
+            await this.feedbackService.insertFeedbacks({
+                FeedbackType: "star",
+                Timestamp: (0, date_fns_1.format)(new Date(), 'yyyy-MM-dd HH:mm:ss') + ' +0800 CST',
+                UserId: uid,
+                ItemId: id
+            });
+        }
+        return 200;
+    }
+    async getUserInfo(context) {
+        return await this.userService.getUserInfo(context.req.session['uid']);
     }
     async getDynamic(page, context) {
         const res = await this.userService.getDynamic(context.req.session['uid'], page);
@@ -65,144 +83,136 @@ let AuthResolver = class AuthResolver {
             count: res.dynamic.length
         };
     }
-    getBaseMusterInfo(context) {
-        return this.userService.getBaseMusterInfo(context.req.session['uid']);
+    async getBaseMusterInfo(context) {
+        return await (await this.userService.getBaseMusterInfo(context.req.session['uid'])).articles;
     }
-    async saveArticle(data, context) {
-        await this.userService.saveArticle(context.req.session['uid'], data);
-        return 200;
-    }
-    async getAllMuster(page, context) {
-        const article = await this.userService.getAllMusterArticles(context.req.session['uid'], page);
-        const res = article.map((item) => {
-            return Object.assign(Object.assign({}, item), { author_name: item.author.name, author: item.author.uuid_user, article_data: item.article_data.length, name: item.name ? item.name : item.article_data[0].title, muster_img: item.muster_img ? item.muster_img : item.article_data[0].article_img, description: item.description ? item.description : item.article_data[0].description, article_id: item.type === 'SINGLE' ? item.article_data[0].outer_id : null });
-        });
-        return res;
-    }
-    async getMusterInfoById(mid) {
-        return await this.userService.getMusterArticleById(mid);
-    }
-    async getGatherArtilces(context) {
-        const article = await this.userService.getAllGatherArticlesPagenation(context.req.session['uid']);
-        const res = article.map((item) => {
-            return Object.assign(Object.assign({}, item), { author_name: item.author.name, author: item.author.uuid_user, article_data: item.article_data.map((item) => {
-                    return Object.assign(Object.assign({}, item), { befollowed: item.befollowed.length });
-                }) });
-        });
-        return res;
-    }
-    async getAllArticles(page, context) {
-        const muster = await this.userService.getAllMusterArticlesPagenation(context.req.session['uid'], page);
-        const musterArticle = muster.reduce((prev, current) => {
-            prev.push(...current.article_data);
-            return prev;
-        }, []);
-        const gather = await (await this.userService.getAllGatherArticlesPagenation(context.req.session['uid'], page)).reduce((prev, current) => {
-            prev.push(...current.article_data.map((item) => {
-                return Object.assign(Object.assign({}, item), { labels: current.labels });
+    async getSingleInfo(context) {
+        const data = await this.userService.getSingleInfo(context.req.session['uid']);
+        const res = data.articles.reduce((prev, current) => {
+            prev.push(...current.articles.map((item) => {
+                return Object.assign(Object.assign({}, item), { article_type: current.article_type });
             }));
             return prev;
         }, []);
-        const res = [...musterArticle, ...gather].sort((a, b) => {
-            return a.edit_time - b.edit_time;
-        });
+        return res;
+    }
+    async getAllColumnArtilces(page, context) {
+        const data = await this.userService.getAllColumnArtilcesPagenation(context.req.session['uid'], page);
         return {
-            AllArticles: res,
-            next: page + 1,
-            count: res.length
+            data: data.articles,
+            next: page + 1
         };
     }
+    async getGatherArtilces(context) {
+        const data = await this.userService.getAllGatherArticlesPagenation(context.req.session['uid']);
+        return data.articles;
+    }
+    async getAllArticlesPagenation(page, context) {
+        const articles = await this.userService.getAllArticles(context.req.session['uid'], page);
+        return {
+            data: articles,
+            next: page + 1,
+        };
+    }
+    async getAllArticles(context) {
+        const articles = await this.userService.getAllArticles(context.req.session['uid']);
+        return articles;
+    }
     LogOut(context) {
-        console.log(context.req.session['uid']);
-        return this.authService.LogOut(context);
+        this.authService.LogOut(context);
+        return 200;
     }
-    async getWritingArticle(uid) {
-        return await this.userService.getWritingArticle(uid);
+    async getUserData(context) {
+        const uid = context.req.session['uid'];
+        if (uid) {
+            return await this.authService.getUserData(uid);
+        }
+        else {
+            return {
+                name: null,
+                uuid: null,
+                user_img: null
+            };
+        }
     }
-    getUserData(context) {
-        return this.authService.getUserData(context);
-    }
-    async followedUser(uid, followed_id) {
+    async followedUser(context, followed_id) {
+        const uid = context.req.session['uid'];
         await this.userService.followUser(uid, followed_id);
-        await this.userService.beFollowUser(followed_id, uid);
+        await this.userService.addInfo(followed_id, uid);
         return 200;
     }
     async getBeFollowedNum(context) {
-        return (await this.userService.userBeFollowedNum(context.req.session['uid'])).be_follow.length;
+        return (await this.userService.userBeFollowed(context.req.session['uid'])).info;
     }
-    async getBeFollowedStatus(follow_user, context) {
-        return await (await this.userService.userBeFollowedStatus(context.req.session['uid'], follow_user)).be_follow.length > 0;
+    async getUserRecommend(page, context) {
+        return await this.recommendService.userRecommend(context.req.session['uid'], page);
     }
 };
 __decorate([
-    (0, graphql_1.Mutation)(() => users_dto_1.LoginDTO),
+    (0, graphql_1.Mutation)(() => Number),
     __param(0, (0, graphql_1.Args)("phone")),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AuthResolver.prototype, "Login", null);
 __decorate([
-    (0, graphql_1.Mutation)(() => article_dto_1.AddArticleRes),
+    (0, common_1.UseGuards)(user_auth_guard_1.UserAuthGuard),
+    (0, graphql_1.Mutation)(() => Number),
     __param(0, (0, graphql_1.Args)('data')),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [users_input_1.MusterInput, Object]),
+    __metadata("design:paramtypes", [users_input_1.SavedArticleInput, Object]),
     __metadata("design:returntype", Promise)
-], AuthResolver.prototype, "addMuster", null);
+], AuthResolver.prototype, "addArticle", null);
 __decorate([
+    (0, common_1.UseGuards)(user_auth_guard_1.UserAuthGuard),
     (0, graphql_1.Mutation)(() => Number),
     __param(0, (0, graphql_1.Args)('data')),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [users_input_1.MusterInput, Object]),
-    __metadata("design:returntype", void 0)
-], AuthResolver.prototype, "savedMuster", null);
+    __metadata("design:paramtypes", [users_input_1.SavedArticleInput, Object]),
+    __metadata("design:returntype", Promise)
+], AuthResolver.prototype, "savedArticle", null);
 __decorate([
-    (0, graphql_1.Mutation)(() => article_dto_1.AddArticleRes),
-    __param(0, (0, graphql_1.Args)('data')),
-    __param(1, (0, graphql_1.Context)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [users_input_1.GatherInput, Object]),
-    __metadata("design:returntype", void 0)
-], AuthResolver.prototype, "addGather", null);
-__decorate([
+    (0, common_1.UseGuards)(user_auth_guard_1.UserAuthGuard),
     (0, graphql_1.Mutation)(() => Number),
     __param(0, (0, graphql_1.Args)('data')),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [users_input_1.GatherInput, Object]),
-    __metadata("design:returntype", void 0)
-], AuthResolver.prototype, "saveGather", null);
-__decorate([
-    (0, graphql_1.Mutation)(() => Number),
-    __param(0, (0, graphql_1.Args)('data')),
-    __param(1, (0, graphql_1.Context)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [article_input_1.CMuster, Object]),
     __metadata("design:returntype", Promise)
 ], AuthResolver.prototype, "createMuster", null);
 __decorate([
-    (0, graphql_1.Query)(() => [article_dto_1.MusterColumn]),
+    (0, graphql_1.Query)(() => [article_dto_1.GatherData]),
     __param(0, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthResolver.prototype, "getMusterColumn", null);
 __decorate([
+    (0, graphql_1.Query)(() => article_dto_1.GatherData),
+    __param(0, (0, graphql_1.Args)('data')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AuthResolver.prototype, "getColumnArticles", null);
+__decorate([
+    (0, common_1.UseGuards)(user_auth_guard_1.UserAuthGuard),
+    (0, graphql_1.Mutation)(() => Number),
+    __param(0, (0, graphql_1.Args)('data')),
+    __param(1, (0, graphql_1.Context)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AuthResolver.prototype, "addZan", null);
+__decorate([
     (0, graphql_1.Query)(() => users_dto_1.BaseUserInfo),
     __param(0, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
-], AuthResolver.prototype, "getUserInfo", null);
-__decorate([
-    (0, graphql_1.Query)(() => [users_dto_1.Draft]),
-    __param(0, (0, graphql_1.Context)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
-], AuthResolver.prototype, "getDraft", null);
+], AuthResolver.prototype, "getUserInfo", null);
 __decorate([
     (0, graphql_1.Query)(() => users_dto_1.DynamicApiRes),
     __param(0, (0, graphql_1.Args)('page')),
@@ -212,97 +222,92 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthResolver.prototype, "getDynamic", null);
 __decorate([
-    (0, graphql_1.Query)(() => users_dto_1.BaseMusterInfo),
+    (0, graphql_1.Query)(() => [users_dto_1.BaseMusterData], { nullable: true }),
     __param(0, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AuthResolver.prototype, "getBaseMusterInfo", null);
 __decorate([
-    (0, graphql_1.Query)(() => Number),
-    __param(0, (0, graphql_1.Args)('data')),
-    __param(1, (0, graphql_1.Context)()),
+    (0, graphql_1.Query)(() => [article_dto_1.ArticleData]),
+    __param(0, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
-], AuthResolver.prototype, "saveArticle", null);
+], AuthResolver.prototype, "getSingleInfo", null);
 __decorate([
-    (0, graphql_1.Query)(() => [article_dto_1.Polymerization]),
+    (0, graphql_1.Query)(() => article_dto_1.AllGatherPagenation),
     __param(0, (0, graphql_1.Args)('page')),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", Promise)
-], AuthResolver.prototype, "getAllMuster", null);
+], AuthResolver.prototype, "getAllColumnArtilces", null);
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.MusterArticleById),
-    __param(0, (0, graphql_1.Args)('mid')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], AuthResolver.prototype, "getMusterInfoById", null);
-__decorate([
-    (0, graphql_1.Query)(() => [article_dto_1.Polymerization]),
+    (0, graphql_1.Query)(() => [article_dto_1.GatherData]),
     __param(0, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthResolver.prototype, "getGatherArtilces", null);
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.AllArticlesRes),
+    (0, graphql_1.Query)(() => article_dto_1.AllArticlesPagenation),
     __param(0, (0, graphql_1.Args)('page')),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", Promise)
+], AuthResolver.prototype, "getAllArticlesPagenation", null);
+__decorate([
+    (0, graphql_1.Query)(() => [article_dto_1.AllArticlesInfo]),
+    __param(0, (0, graphql_1.Context)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
 ], AuthResolver.prototype, "getAllArticles", null);
 __decorate([
-    (0, graphql_1.Mutation)(() => users_dto_1.LogOutDto),
+    (0, graphql_1.Mutation)(() => Number),
     __param(0, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthResolver.prototype, "LogOut", null);
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.WritingList),
-    __param(0, (0, graphql_1.Args)('uid')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], AuthResolver.prototype, "getWritingArticle", null);
-__decorate([
-    (0, graphql_1.Query)(() => users_dto_1.UsersDATA),
+    (0, graphql_1.Query)(() => users_dto_1.UsersDATA, { nullable: true }),
     __param(0, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AuthResolver.prototype, "getUserData", null);
 __decorate([
-    (0, common_1.UseGuards)(user_auth_guard_1.UserAuthGuard),
     (0, graphql_1.Mutation)(() => Number),
-    __param(0, (0, graphql_1.Args)('uid')),
+    __param(0, (0, graphql_1.Context)()),
     __param(1, (0, graphql_1.Args)('followed_id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], AuthResolver.prototype, "followedUser", null);
 __decorate([
-    (0, graphql_1.Query)(() => Number),
+    (0, graphql_1.Query)(() => user_dto_1.UserBeFollowed),
     __param(0, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthResolver.prototype, "getBeFollowedNum", null);
 __decorate([
-    (0, graphql_1.Query)(() => Boolean),
+    (0, graphql_1.Query)(() => [String], { nullable: true }),
+    __param(0, (0, graphql_1.Args)('page')),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", Promise)
-], AuthResolver.prototype, "getBeFollowedStatus", null);
+], AuthResolver.prototype, "getUserRecommend", null);
 AuthResolver = __decorate([
     (0, graphql_1.Resolver)(),
-    __metadata("design:paramtypes", [auth_service_1.AuthService, users_service_1.UsersService])
+    __metadata("design:paramtypes", [auth_service_1.AuthService,
+        users_service_1.UsersService,
+        feedback_service_1.FeedbackService,
+        recommend_service_1.RecommendService])
 ], AuthResolver);
 exports.AuthResolver = AuthResolver;
 //# sourceMappingURL=auth.resolver.js.map

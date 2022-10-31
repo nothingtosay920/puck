@@ -4,14 +4,14 @@ export declare class CategoryService {
     private readonly prisma;
     constructor(prisma: AppService);
     getCategory(): Promise<{
-        description: string;
+        name: string;
         labels: {
-            description: string;
-            category: string;
             name: string;
             label_id: string;
+            description: string;
+            category: string;
         }[];
-        name: string;
+        description: string;
         category_id: string;
     }[]>;
     findCategoryById(id: string): Promise<import(".prisma/client").Category>;

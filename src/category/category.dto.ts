@@ -14,23 +14,6 @@ class Categorylabel {
   label_id: string
 }
 
-@ObjectType()
-export class Category {
-
-  @Field()
-  name: string
-
-  @Field()
-  description: string
-
-  @Field()
-  category_id: string
-
-  @Field(() => [Categorylabel])
-  labels: Categorylabel[]
-
-}
-
 // const result = await prisma.user.findMany({
 //   select: {
 //     id: true,

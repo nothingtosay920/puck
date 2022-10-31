@@ -9,8 +9,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GatherInput = exports.GatherArticle = exports.MusterInput = exports.LabelType = exports.MusterArticle = exports.UsersInput = void 0;
+exports.LabelType = exports.SavedArticleInput = exports.ArticleInput = exports.GatherInput = exports.UsersInput = void 0;
 const graphql_1 = require("@nestjs/graphql");
+const client_1 = require("@prisma/client");
 let UsersInput = class UsersInput {
 };
 __decorate([
@@ -21,28 +22,92 @@ UsersInput = __decorate([
     (0, graphql_1.InputType)()
 ], UsersInput);
 exports.UsersInput = UsersInput;
-let MusterArticle = class MusterArticle {
+let GatherInput = class GatherInput {
 };
 __decorate([
     (0, graphql_1.Field)({ nullable: false }),
     __metadata("design:type", String)
-], MusterArticle.prototype, "title", void 0);
+], GatherInput.prototype, "gather_name", void 0);
 __decorate([
     (0, graphql_1.Field)({ nullable: false }),
     __metadata("design:type", String)
-], MusterArticle.prototype, "description", void 0);
+], GatherInput.prototype, "article_description", void 0);
 __decorate([
     (0, graphql_1.Field)({ nullable: false }),
     __metadata("design:type", String)
-], MusterArticle.prototype, "article", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], MusterArticle.prototype, "articleImg", void 0);
-MusterArticle = __decorate([
+], GatherInput.prototype, "gather_img", void 0);
+GatherInput = __decorate([
     (0, graphql_1.InputType)()
-], MusterArticle);
-exports.MusterArticle = MusterArticle;
+], GatherInput);
+exports.GatherInput = GatherInput;
+let ArticleInput = class ArticleInput {
+};
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], ArticleInput.prototype, "title", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], ArticleInput.prototype, "outer_id", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], ArticleInput.prototype, "article", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], ArticleInput.prototype, "article_img", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], ArticleInput.prototype, "edit_time", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: true }),
+    __metadata("design:type", String)
+], ArticleInput.prototype, "description", void 0);
+ArticleInput = __decorate([
+    (0, graphql_1.InputType)()
+], ArticleInput);
+exports.ArticleInput = ArticleInput;
+let SavedArticleInput = class SavedArticleInput {
+};
+__decorate([
+    (0, graphql_1.Field)({ nullable: true }),
+    __metadata("design:type", String)
+], SavedArticleInput.prototype, "gather_name", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], SavedArticleInput.prototype, "article_type", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: true }),
+    __metadata("design:type", String)
+], SavedArticleInput.prototype, "article_description", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: true }),
+    __metadata("design:type", String)
+], SavedArticleInput.prototype, "gather_img", void 0);
+__decorate([
+    (0, graphql_1.Field)(() => [ArticleInput]),
+    __metadata("design:type", Array)
+], SavedArticleInput.prototype, "article_data", void 0);
+__decorate([
+    (0, graphql_1.Field)(() => [String]),
+    __metadata("design:type", Array)
+], SavedArticleInput.prototype, "labels", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], SavedArticleInput.prototype, "gather_id", void 0);
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], SavedArticleInput.prototype, "category", void 0);
+SavedArticleInput = __decorate([
+    (0, graphql_1.InputType)()
+], SavedArticleInput);
+exports.SavedArticleInput = SavedArticleInput;
 let LabelType = class LabelType {
 };
 __decorate([
@@ -53,94 +118,4 @@ LabelType = __decorate([
     (0, graphql_1.InputType)()
 ], LabelType);
 exports.LabelType = LabelType;
-let MusterInput = class MusterInput {
-};
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", MusterArticle)
-], MusterInput.prototype, "article_data", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: true }),
-    __metadata("design:type", String)
-], MusterInput.prototype, "category", void 0);
-__decorate([
-    (0, graphql_1.Field)(() => [LabelType]),
-    __metadata("design:type", Array)
-], MusterInput.prototype, "labels", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], MusterInput.prototype, "muster_id", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: true }),
-    __metadata("design:type", String)
-], MusterInput.prototype, "name", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: true }),
-    __metadata("design:type", String)
-], MusterInput.prototype, "muster_article_id", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: true }),
-    __metadata("design:type", String)
-], MusterInput.prototype, "muster_img", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: true }),
-    __metadata("design:type", String)
-], MusterInput.prototype, "muster_desc", void 0);
-MusterInput = __decorate([
-    (0, graphql_1.InputType)()
-], MusterInput);
-exports.MusterInput = MusterInput;
-let GatherArticle = class GatherArticle {
-};
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], GatherArticle.prototype, "title", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], GatherArticle.prototype, "article", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], GatherArticle.prototype, "article_img", void 0);
-GatherArticle = __decorate([
-    (0, graphql_1.InputType)()
-], GatherArticle);
-exports.GatherArticle = GatherArticle;
-let GatherInput = class GatherInput {
-};
-__decorate([
-    (0, graphql_1.Field)(() => [GatherArticle]),
-    __metadata("design:type", Array)
-], GatherInput.prototype, "article_data", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], GatherInput.prototype, "category", void 0);
-__decorate([
-    (0, graphql_1.Field)(() => [LabelType]),
-    __metadata("design:type", Array)
-], GatherInput.prototype, "labels", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], GatherInput.prototype, "description", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], GatherInput.prototype, "gather_id", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], GatherInput.prototype, "gather_article_id", void 0);
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], GatherInput.prototype, "gather_img", void 0);
-GatherInput = __decorate([
-    (0, graphql_1.InputType)()
-], GatherInput);
-exports.GatherInput = GatherInput;
 //# sourceMappingURL=users.input.js.map

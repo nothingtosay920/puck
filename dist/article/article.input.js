@@ -9,22 +9,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CMuster = exports.ArticleInput = void 0;
+exports.CMuster = void 0;
 const graphql_1 = require("@nestjs/graphql");
-let ArticleInput = class ArticleInput {
-};
-__decorate([
-    (0, graphql_1.Field)({ nullable: false }),
-    __metadata("design:type", String)
-], ArticleInput.prototype, "title", void 0);
-__decorate([
-    (0, graphql_1.Field)(() => [String]),
-    __metadata("design:type", Array)
-], ArticleInput.prototype, "contents", void 0);
-ArticleInput = __decorate([
-    (0, graphql_1.InputType)()
-], ArticleInput);
-exports.ArticleInput = ArticleInput;
 let CMuster = class CMuster {
 };
 __decorate([

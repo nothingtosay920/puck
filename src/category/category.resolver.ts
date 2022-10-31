@@ -1,7 +1,5 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma } from '@prisma/client';
-import { CreateLabelInput } from 'src/label/label.input';
-import { Category } from './category.dto';
+import { Category } from 'src/article/article.dto';
 import { CreateCategoryInput } from './category.input';
 import { CategoryService } from './category.service';
 

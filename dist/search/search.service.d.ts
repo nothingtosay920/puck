@@ -1,5 +1,6 @@
-import { AppService } from "src/app.service";
+import { ElasticsearchService } from "@nestjs/elasticsearch";
 export declare class SearchService {
-    private readonly prisma;
-    constructor(prisma: AppService);
+    private readonly client;
+    constructor(client: ElasticsearchService);
+    Search(query: string, page: number): Promise<string[]>;
 }

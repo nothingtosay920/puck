@@ -15,7 +15,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserAuthGuard = void 0;
 const common_1 = require("@nestjs/common");
 const graphql_1 = require("@nestjs/graphql");
-const apollo_server_express_1 = require("apollo-server-express");
 const role_service_1 = require("../role/role.service");
 let UserAuthGuard = class UserAuthGuard {
     constructor(roleService) {
@@ -26,7 +25,7 @@ let UserAuthGuard = class UserAuthGuard {
         const req = ctx.getContext().req;
         let uid = req.session['uid'];
         if (!uid) {
-            throw new apollo_server_express_1.AuthenticationError('UNAUTHENTICATED');
+            throw new common_1.UnauthorizedException('用户未登录');
         }
         const userRole = (await this.roleService.findOne(uid)).role;
         if (userRole === 'USER') {

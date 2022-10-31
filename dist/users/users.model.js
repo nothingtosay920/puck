@@ -14,6 +14,7 @@ const label_service_1 = require("../label/label.service");
 const item_module_1 = require("../recommend/item/item.module");
 const user_model_1 = require("../recommend/user/user.model");
 const user_service_1 = require("../recommend/user/user.service");
+const search_module_1 = require("../search/search.module");
 const users_service_1 = require("./users.service");
 let UsersModule = class UsersModule {
 };
@@ -21,7 +22,8 @@ UsersModule = __decorate([
     (0, common_1.Module)({
         imports: [
             user_model_1.RecommendUserModule,
-            item_module_1.RecommendItemModule
+            item_module_1.RecommendItemModule,
+            search_module_1.SearchModule
         ],
         providers: [users_service_1.UsersService, app_service_1.AppService, user_service_1.RcommendUserService, category_service_1.CategoryService, label_service_1.LabelService],
         exports: [user_model_1.RecommendUserModule, item_module_1.RecommendItemModule]

@@ -1,291 +1,352 @@
-import { ForbiddenException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { DynamicType } from '@prisma/client';
+import { JwtService } from '@nestjs/jwt';
+import { ArticleType, DynamicType, Gather, User } from '@prisma/client';
 import { format } from 'date-fns';
 import { IContext } from 'src/auth/auth.service';
-import { GatherService } from 'src/muster/gather.service';
-import { MusterService } from 'src/muster/muster.service';
+import { jwtConstants } from 'src/jwt/constants';
 import { FeedbackService } from 'src/recommend/feedback/feedback.service';
-import { UsersDATA } from 'src/users/users.dto';
+import { RecommendItemService } from 'src/recommend/item/item.service';
+import { RcommendUserService } from 'src/recommend/user/user.service';
+import { SearchService } from 'src/search/search.service';
+import { MessageData, MessageDataRes } from 'src/users/users.dto';
 import { UsersService } from 'src/users/users.service';
-import { addAbortSignal } from 'stream';
-import { ArticleDTO, ArticleType, Befollowed, collectionArticleRes, collectionList, DraftArticle, DynamicRes, MusterArticleDTO, RecordsRes } from './article.dto';
+import { AllArticlesPagenation, ArticleData, ArticleDataPagenation, ArticlePanelStatus, DynamicRes, RecordsDataPagenation, WritingArticle } from './article.dto';
 import { ArticleService } from './article.service';
+import { ArticleDataType, GatherRes } from './article.type';
 
 @Resolver()
 export class ArticleResolver {
   constructor(
     private readonly articleService: ArticleService,
     private readonly feedbackService: FeedbackService,
-    private readonly musterService: MusterService,
-    private readonly gatherArticle: GatherService,
-    private readonly userSerivce: UsersService
+    private readonly userSerivce: UsersService,
+    private jwtService: JwtService,
+    private recommendItemService: RecommendItemService,
+    private searchService: SearchService,
+    private rcommendUserService: RcommendUserService
   ) {}
 
-  @Query(() => ArticleDTO)
-  async getArticleById(@Args('article_id') id: string, @Context() context: IContext): Promise<ArticleDTO> {
-    
-    const v = id[0] 
-    let uid = context.req.session['uid']
-    let status = false
+  @Query(() => ArticleData)
+  async getArticleById(
+    @Args('article_id') id: string, 
+    @Args('token', {nullable: true}) token: string, 
+  
+  ): Promise<ArticleDataType & GatherRes> {
+    let uid = undefined
+    if (token) {
+      uid = this.jwtService.verify(token, {
+        secret: jwtConstants.secret
+      }).uuid
+    }
+  
+    let zan_status = false
     let follow_status = false
     let collection_status = false
-    let res = undefined
-    if (v === 'M') {
-      res = await this.getMusterArticle(id) 
-         
-    } else if(v === 'G') {
-      res = await this.getGatherArticle(id)
-    } else {
-      return null
-    }
+    let follow_user = false
+
+    const article = await this.articleService.getArticle(id)
+    const gather = await this.articleService.getGather(article.gather_id)
     
     if (uid) {
       await this.userSerivce.addRecords(uid, id)
-      const findUser = await this.userSerivce.findUserZan(uid, id)
-      status = findUser.zan_list.length > 0
-      collection_status = findUser.collection.length > 0
-      follow_status = res.befollowed.find((element) => element === uid)
-      // await this.feedbackService.insertFeedbacks({
-      //   FeedbackType: "read",
-      //   Timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss') + ' +0800 CST',
-      //   UserId: uid,
-      //   ItemId: id
-      // })
+      follow_user = await (await this.userSerivce.getFollowUserStatus(uid, gather.author.uuid)).follow.length > 0
+
+      zan_status = !!article.zan.find((element) => element.authorId === uid)
+      follow_status = !!article.info.find((element) => element.uuid === uid)
+      collection_status = !!article.collection.find((element) => element.user_id === uid)
+
+      
+        await this.feedbackService.insertFeedbacks({
+          FeedbackType: "read",
+          Timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss') + ' +0800 CST',
+          UserId: uid,
+          ItemId: id
+        })
+      
       
     }
-    
+
     return {
-      ...res,
-      zan_status: status,
-      follow_status: !!follow_status,
+      ...article,
+      zan_status,
+      follow_status,
       collection_status,
-      befollowed:res.befollowed.length
+      follow_user,
+      author: {
+        name: gather.author.name,
+        user_img: gather.author.user_img,
+        uuid: gather.author.uuid
+      },
+      gather,
+      article_type: gather.article_type
     }
   }
 
-  @Query(() => ArticleDTO)
-  async getArticleByIdNotFB(@Args('article_id') id: string, @Context() context: IContext): Promise<ArticleDTO> {
-    const v = id[0]
-    let res = undefined
-    if (v === 'M') {
-      res = await this.getMusterArticle(id) 
-         
-    } else if(v === 'G') {
-      res = await this.getGatherArticle(id)
-    } else {
-      return null
+  @Mutation(() => Number)
+  async insertFeeback(@Args('article_id') id: string, @Args('vid') vid: string) {
+    await this.rcommendUserService.insertUser({
+      UserId: vid,
+      Labels: []
+    })
+    await this.feedbackService.insertFeedbacks({
+      FeedbackType: "read",
+      Timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss') + ' +0800 CST',
+      UserId: vid,
+      ItemId: id
+    })
+    return 200
+  }
+
+  @Query(() => ArticleData)
+  async getArticleByIdNotFB(@Args('article_id') id: string, @Context() context: IContext): Promise<ArticleDataType & GatherRes> {
+
+    const uid = context.req.session['uid']
+    let zan_status = false
+    let follow_status = false
+    let collection_status = false
+    let user: undefined | User = undefined
+
+    const article = await this.articleService.getArticle(id)
+    const gather = await this.articleService.getGather(article.gather_id)
+
+    if (uid) {
+      user = await this.userSerivce.findOne(uid)
+
+      zan_status = !!article.zan.find((element) => element.authorId === uid)
+      follow_status = !!article.info.find((element) => element.uuid === uid)
+      collection_status = !!article.collection.find((element) => element.user_id === uid)
+
     }
-    const findUser = await this.userSerivce.findUserZan(context.req.session['uid'], id)
-    const status = findUser.zan_list.length > 0
-    const collection_status = findUser.collection.length > 0
-    const follow_status = res.befollowed.find((element) => element === context.req.session['uid'])
+
     return {
-      ...res,
-      zan_status: status,
-      follow_status: !!follow_status,
+      ...article,
+      zan_status,
+      follow_status,
       collection_status,
-      befollowed:res.befollowed.length
+      author: {
+        name: user.name,
+        user_img: user.user_img,
+        uuid: user.uuid
+      },
+      gather,
+      article_type: gather.article_type
     }
   }
 
-  @Query(() => RecordsRes)
+  @Query(() => Number)
+  async removeArticleById(@Args('id') id: string) {
+    await this.articleService.removeArticleById(id)
+    return 200
+  } 
+
+  @Query(() => RecordsDataPagenation)
   async getRecords(@Args('page') page: number, @Context() context: IContext) {
     const records = await this.userSerivce.getRecords(page, context.req.session['uid'])
+ 
     
     const res = records.record.map(async (item) => {
-      const article_id = item.article_id.split('|')[1]
-      const article = await this.getArticleByIdNotFB(article_id, context)
+      const article = await this.getArticleByIdNotFB(item.article_id, context)
       return {
         ...article,
         timestamp: item.timestamp,  
       }
     })
-    
     return {
-      article_data: res,
+      data: res,
       next: page + 1
     }
   }
 
 
-
-  @Query(() => DraftArticle)
-   async getWritingArticleById(@Args('article_id') id: string): Promise<DraftArticle> {
-    const v = id[0]
-    let res = undefined
-    let categorys = undefined
-    let labels = undefined
-    if (v === 'M') {
-      res = await this.getMusterArticle(id)  
-      categorys = res.categorys
-      labels = res.labels
-    } else {
-      res = await this.articleService.getGatherById(id)
-      res = {
-        ...res,
-        type: 'GATHER'
-      }
-      categorys = res.categorys.map((item) => item.category)[0]
-      labels = res.labels.map((item) => item.label)
-      
-    } 
-    return {
-      ...res,
-      categorys,
-      labels
-    }
-  }
-
-  @Query(() => collectionList)
-  async getUserSavedApi(@Context() context: IContext) {
-    const collection = await this.userSerivce.getUserSaved(context.req.session['uid'])
-
-    const res = collection.collection.map(async (item) => {
-      const article = await this.getArticleById(item.article_id, context)
+  @Query(() => ArticleDataPagenation)
+  async Search(@Args('query') query: string,@Args('page') page: number) {
+    const data = await this.searchService.Search(query, page)
+    
+    const res = data.map(async (item) => {
+      const article = await this.articleService.getArticle(item)
+      const gather = await this.articleService.getGather(article.gather_id)
       return {
-        title: article.title,
-        hot: article.hot,
-        zan: article.zan,
-        edit_time: article.edit_time
+        ...article,
+        gather,
+        author: {
+          name: gather.author.name,
+          uuid: gather.author.uuid,
+          user_img: gather.author.user_img
+        },
+        article_type: gather.article_type
       }
     })
-    return {
-      list: res
-    }
-  }
-
-  
-
-  @Query(() => DraftArticle)
-  async getDraftArticleById(@Args('article_id') id: string) {
-    const v = id[0]
-    let res = undefined
-    if (v === 'M') {
-      res = await this.getMusterArticle(id) 
-    } else if(v === 'G') {
-      res = await this.articleService.getGatherById(id)
-    } else {
-      throw Error("article_id错误")
-    }
-    return res
-  }
-  @Mutation(() => Number)
-   addZan(@Args('data') id: string, @Args("type") type: string, @Context() context: IContext) {
-    if (type === 'MUSTER') {
-      this.articleService.addZanInMuster(id)
-    } else if(type === 'GATHER') {
-      this.articleService.addZanInGather(id)
-    }
-    this.userSerivce.addUserZan(context.req.session['uid'], id)
-    return 200
-  }
-
-  @Mutation(() => Number)
-  async followedArticle(@Args('id') id: string, @Args('type') type: ArticleType, @Context() context: IContext) {
-    const uid = context.req.session['uid']
-    await this.articleService.artilceBeFollowed(uid, id, type)
-    await this.userSerivce.collection(uid, id, uid + '|' + id)
-    return 200
-  }
-
-  async getGatherArticle(article_id: string) {
-
-    let data: any = {}
-    try {
-       data = await this.articleService.getGatherArticle(article_id)
-    } catch (error) {
-      throw new ForbiddenException('文章id错误')
-    }
-
-    const author = await this.gatherArticle.getGather(data.gather)
-    const user = await this.userSerivce.findOne(author.authorId)
-
-    return {
-      description: author.description,
-      article: data.article,
-      title: data.title,
-      img: data.article_img,
-      labels: author.labels.map((item) => item.label),
-      categorys: author.categorys[0].category,
-      author: author.authorId,
-      gather: author.gather_id,
-      id: data.outer_id,
-      type: data.article_type,
-      article_img: data.article_img,
-      befollowed: data.befollowed.map((item) => item.user_id),
-      author_img: user.user_img,
-      author_name: user.name,
-      hot: data.hot,
-      zan: data.zan,
-      edit_time: data.edit_time
-
-    }
-  }
-
-  async getMusterArticle(article_id: string) {
-    let data: any = {}
-    try {
-       data = await this.articleService.getMusterArticle(article_id)
-    } catch (error) {
-      throw new ForbiddenException('文章id错误')
-    }
     
-    const author = await this.musterService.getMuster(data.muster)
-    const user = await this.userSerivce.findOne(author.authorId)
     return {
-      description: data.description,
-      article: data.article,
-      title: data.title,
-      img: data.article_img,
-      labels: data.labels.map((item) => item.label),
-      categorys: data.categorys[0].category,
-      author: author.authorId,
-      muster: data.muster,
-      id: data.outer_id,
-      type: data.article_type,
-      article_img: data.article_img,
-      befollowed: data.befollowed.map((item) => item.user_id),
-      author_img: user.user_img,
-      author_name: user.name,
-      hot: data.hot,
-      zan: data.zan,
-      edit_time: data.edit_time
+      data: res,
+      next: page + 1
     }
   }
 
-  @Query(() => DynamicRes)
+  @Query(() => AllArticlesPagenation)
+  async SearchAuthorArticle(@Args('query') query: string, @Args('author') author_id: string, @Args('page') page: number) {
+    const data = await this.articleService.searchAuthorArticle(query, author_id, page)
+    return {
+      data,
+      next: page + 1,
+    }
+  }
+
+  @Query(() => ArticleDataPagenation)
+  async SearchAllArticle(@Args('query') query: string, @Args('page') page: number,@Context() context: IContext) {
+    const res = await this.articleService.searchAllArticle(query, context.req.session['uid'])
+    return {
+      data: res.articles,
+      next: page + 1
+    }
+  }
+
+  // async SearchRecords(@Args('query') query: string, @Args('page') page: number) {
+    
+  // }
+
+  @Query(() => ArticleDataPagenation)
+  async getUserSavedApi(@Context() context: IContext) {
+    const collection = await this.userSerivce.getUserSaved(context.req.session['uid'])
+    const res = collection.collection.map(async (item) => {
+      return await this.articleService.getArticle(item.article_id)
+    })
+    return {
+      data: res
+    }
+  }
+
+  @Mutation(() => Number)
+  async collectArticle(@Args('id') id: string, @Context() context: IContext) {
+    const uid = context.req.session['uid']
+    const data = await (await this.userSerivce.findArticleCollect(id, uid)).collection
+    if (data.length) {
+      await this.userSerivce.removeCollect(uid, id)
+      
+    } else {
+      await this.userSerivce.collection(uid, id)
+    }
+
+    return 200
+  }
+
+
+  @Query(() => ArticleData)
   async dynamicApi(@Args('content') content: string, @Args('type') type: DynamicType, @Context() context: IContext) {
     switch (type) {
       case 'ZAN':
-        return await this.getArticleById(content, context)
+        return await this.getArticleByIdNotFB(content, context)
       case 'RELEASE':
-        return await this.getArticleById(content, context)
+        return await this.getArticleByIdNotFB(content, context)
       case 'FollowArticle':
-        return await this.getArticleById(content, context)
+        return await this.getArticleByIdNotFB(content, context)
       case 'COLLECTION': 
-        return await this.getArticleById(content, context)
+        return await this.getArticleByIdNotFB(content, context)
       case 'Follow':
-        return await this.userSerivce.findOne(content)
+        const user = await this.userSerivce.findOne(content)
+        return {
+          author: user
+        }
     }
   }
 
-  @Query(() => collectionArticleRes)
+  @Query(() => ArticleDataPagenation)
+  async getDraft(@Args('page') page: number, @Context() context: IContext) {
+    const data = await this.userSerivce.getDraft(context.req.session['uid'], page)
+    const res = data.draft.map(async (item) => {
+      console.log(item);
+      
+      return await this.getArticleByIdNotFB(item.article_id, context)
+    })  
+    return {
+      data: res,
+      next: page + 1,
+    }
+  }
+
+  @Query(() => ArticleDataPagenation)
   async getCollectionArticles(@Args('page') page: number, @Context() context: IContext) {
     const list = await (await this.userSerivce.getColletionArticles(context.req.session['uid'], page)).collection
-    const res: Promise<ArticleDTO>[] = list.map(async (item) => {
+    const res = list.map(async (item) => {
       return await this.getArticleByIdNotFB(item.article_id, context)
     })
     return {
-      list: res,
+      data: res,
       next: page + 1,
-      count: res.length
     }
   }
 
   @Query(() => Number)
-  async removeMusterArticleById(@Args('id') id: string, @Context() context: IContext) {
-    await this.articleService.removeMusterArticleById(id, context.req.session['uid'])
+  async indexPanelArticle(@Context() context: IContext) {
+    const lastestRecords = await (await this.userSerivce.getLastetRecords(context.req.session['uid'])).record[0].article_id
+    const value = await this.recommendItemService.getItemNeighbors(lastestRecords)
+    console.log(value);
     return 200
-  } 
+  }
+
+  @Query(() => Number)
+  async getArticleNeighbors(@Args('article_id') id: string) {
+    const v = await this.recommendItemService.getItemNeighbors(id)
+    console.log(v);
+    return 200
+    
+  }
+
+  @Mutation(() => Number)
+  async followArticle(@Args("article_id") id: string, @Context() context: IContext) {
+    const uid = context.req.session['uid']
+    const data = await (await this.articleService.findArticleFollow(id, uid)).info
+    if (data.length) {
+      await this.articleService.remoceArticleFollow(id, uid)
+    } else {
+      await this.articleService.artilceBeFollowed(uid, id)
+    }
+    
+    return 200
+  }
+
+  @Query(() => MessageDataRes, {nullable: true})
+  async getUserMessage(@Args('page') page: number, @Context() context: IContext) {
+    const data = await (await this.userSerivce.getMessage(context.req.session['uid'], page)).message
+    return {
+      data,
+      next: page + 1,
+    }
+  }
+
+  @Query(() => WritingArticle)
+  async getWritingArticle(@Args('article_id') id: string) { 
+    
+    const article = await this.articleService.getArticle(id)
+    const gather = await this.articleService.getGather(article.gather_id)
+
+    return {
+      type: gather.article_type,
+      article_data: gather.article_type === 'GATHER' ? gather.articles : [article],
+      gather_id: gather.gather_id,
+      gather_name: gather.gather_name,
+      gather_img: gather.gather_img,
+      category: article.categorys[0].category_id,
+      labels: article.labels.map((item) => item.label_id),
+      article_description: gather.article_description
+    }
+  }
+
+  @Query(() => ArticlePanelStatus)
+  async getArticlePanelStatus(@Args('artcle_id') article_id: string, @Context() context: IContext) {
+    const uid = context.req.session['uid']
+    const res = {
+      zan_status: false,
+      collect_status: false,
+      follow_status: false
+    }
+    if (uid) {
+      const data = await this.articleService.getArticlePanelStatus(uid, article_id)
+      res.zan_status = data.zan.length > 0
+      res.collect_status = data.collection.length > 0
+      res.follow_status = data.follow.length > 0
+    }
+    return res
+  }
+
 }

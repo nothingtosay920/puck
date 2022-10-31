@@ -29,7 +29,7 @@
     "@nestjs/elasticsearch": "^9.0.0",
     "@nestjs/event-emitter": "^1.1.1",
     "@nestjs/graphql": "^10.0.5",
-    "@nestjs/jwt": "^8.0.0",
+    "@nestjs/jwt": "^9.0.0",
     "@nestjs/passport": "^8.2.1",
     "@nestjs/platform-express": "^8.0.0",
     "@nestjs/platform-socket.io": "7.0.0",

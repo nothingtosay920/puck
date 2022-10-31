@@ -9,9 +9,10 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RecommendUserRes = void 0;
+exports.UserFollowedItem = exports.UserBeFollowed = exports.RecommendUserRes = void 0;
 const graphql_1 = require("@nestjs/graphql");
 const class_validator_1 = require("class-validator");
+const users_interface_1 = require("../../users/users.interface");
 let RecommendUserRes = class RecommendUserRes {
 };
 __decorate([
@@ -23,4 +24,22 @@ RecommendUserRes = __decorate([
     (0, graphql_1.ObjectType)()
 ], RecommendUserRes);
 exports.RecommendUserRes = RecommendUserRes;
+let UserBeFollowed = class UserBeFollowed {
+};
+UserBeFollowed = __decorate([
+    (0, graphql_1.ObjectType)({
+        implements: [users_interface_1.UserBeFollowedInter]
+    })
+], UserBeFollowed);
+exports.UserBeFollowed = UserBeFollowed;
+let UserFollowedItem = class UserFollowedItem {
+};
+__decorate([
+    (0, graphql_1.Field)({ nullable: false }),
+    __metadata("design:type", String)
+], UserFollowedItem.prototype, "follow_id", void 0);
+UserFollowedItem = __decorate([
+    (0, graphql_1.ObjectType)()
+], UserFollowedItem);
+exports.UserFollowedItem = UserFollowedItem;
 //# sourceMappingURL=user.dto.js.map

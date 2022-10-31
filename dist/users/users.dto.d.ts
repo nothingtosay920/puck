@@ -1,23 +1,10 @@
-export declare class UsersDTO {
-    phone: string;
-}
-export declare class LoginDTO {
-    message: string;
-    code: number;
-}
-export declare class LogOutDto {
-    code: number;
+import { ArticleType } from "@prisma/client";
+export declare class UserData {
 }
 export declare class UsersDATA {
     name: string;
     user_img: string;
-    open_id: string;
-}
-export declare class Draft {
-    article_id: string;
-    time_stmap: string;
-    type: string;
-    title: string;
+    uuid: string;
 }
 export declare class Dynamic {
     content: string;
@@ -35,9 +22,30 @@ export declare class BaseUserInfo {
     name: string;
 }
 export declare class BaseMusterInfo {
-    muster_data: BaseMusterData[];
+    data: BaseMusterData[];
+    next: number;
+}
+export declare class BaseMusterArticle {
+    outer_id: string;
 }
 export declare class BaseMusterData {
-    name: string;
-    muster_id: string;
+    gather_name: string;
+    gather_id: string;
+    gather_img: string;
+    article_description: string;
+    article_type: string;
+    articles: BaseMusterArticle[];
+}
+export declare class InfoReadData {
+}
+export declare class MessageData {
+    timestamp: string;
+    title: string;
+    article_id: string;
+    article_type: ArticleType;
+    info: InfoReadData;
+}
+export declare class MessageDataRes {
+    data: MessageData[];
+    next: number;
 }

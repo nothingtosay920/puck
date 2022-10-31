@@ -14,8 +14,6 @@ const article_service_1 = require("../../article/article.service");
 const recommend_service_1 = require("./recommend.service");
 const recommend_resolver_1 = require("./recommend.resolver");
 const axios_1 = require("@nestjs/axios");
-const gather_service_1 = require("../../muster/gather.service");
-const muster_service_1 = require("../../muster/muster.service");
 const category_service_1 = require("../../category/category.service");
 const label_service_1 = require("../../label/label.service");
 let RecommendModule = class RecommendModule {
@@ -26,7 +24,7 @@ RecommendModule = __decorate([
             axios_1.HttpModule,
             passport_1.PassportModule,
         ],
-        providers: [app_service_1.AppService, recommend_service_1.RecommendService, recommend_resolver_1.RecommendResolver, article_service_1.ArticleService, gather_service_1.GatherService, muster_service_1.MusterService, category_service_1.CategoryService, label_service_1.LabelService],
+        providers: [app_service_1.AppService, recommend_service_1.RecommendService, recommend_resolver_1.RecommendResolver, article_service_1.ArticleService, category_service_1.CategoryService, label_service_1.LabelService],
         exports: [recommend_service_1.RecommendService, axios_1.HttpModule]
     })
 ], RecommendModule);

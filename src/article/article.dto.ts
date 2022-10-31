@@ -1,449 +1,191 @@
-import { Field, ObjectType, registerEnumType } from "@nestjs/graphql";
-import { MusterType } from "@prisma/client";
+import { Field, InterfaceType, ObjectType, registerEnumType } from "@nestjs/graphql";
+import { ArticleType } from "@prisma/client";
 import { Label } from "src/label/label.dto";
+import { BaseMusterArticle, UserData } from "src/users/users.dto";
+import { UserInfoInter } from "src/users/users.interface";
+import { ArticleInter, ArticlePanelStatusInter, BeFollowedInter, CategoryInter, CollectionInter, DraftInter, GatherInter, GatherResInterface, ZanInter } from "./article.interface";
 
 
-export type ArtiType = 'GATHER' | 'SOLO'
+@ObjectType({
+  implements: [BeFollowedInter]
+})
+export class BeFollowed{}
 
-
-export type ArticleType = 'GATHER' | 'MUSTER'
+@ObjectType({
+  implements: [DraftInter]
+})
+export class Draft{}
 
 @ObjectType()
-export class LabelDto {
-  
+export class DraftRes {
+  @Field(() => [Draft])
+  data: Draft[]
+
   @Field({nullable: false})
-  label: string
-
-  @Field({nullable: true})
-  name: string
-
-  @Field({nullable: true})
-  description: string
+  next: number
 }
 
-@ObjectType()
-export class MusterArticleDTO {
-  @Field({ nullable: false})
-  description: string
-  
-  @Field()
-  article: string
+@ObjectType({
+  implements: [CollectionInter]
+})
+export class Collection{}
 
-  
+@ObjectType({
+  implements: [ZanInter]
+})
+export class Zan{}
+
+@ObjectType({
+  implements: [CategoryInter]
+})
+export class Category{}
+
+
+@ObjectType({
+  implements: [GatherResInterface]
+})
+export class GatherRes{}
+
+@ObjectType({
+  implements: [ArticleInter]
+}) 
+export class  ArticleData {
+  @Field({nullable: true})
+  zan_status: boolean
+
+  @Field({nullable: true})
+  collection_status: boolean
+
+  @Field({nullable: true})
+  follow_status: boolean
+
+  @Field({nullable: true})
+  follow_user: boolean
+
+  @Field(()=> [Zan])
+  zan: Zan[]
+
+  @Field(()=> [BeFollowed], {nullable: true})
+  beFollowed: BeFollowed[]
+
+  @Field(()=> [Collection], {nullable: true})
+  collection: Collection[]
+
+  @Field(()=> [Draft])
+  draft: Draft[]
+
+  @Field(()=> [Label])
+  labels: Label[];
+
+  @Field(()=> [Category])
+  categorys: Category[];
+
+  @Field({nullable: true})
+  gather: GatherRes
+
 }
 
-@ObjectType()
-export class GatherArticle {
+@ObjectType({
+  implements: [ArticleInter]
+})
+export class RecordsArticleData{
   @Field({nullable: false})
-  title: string
-
-  @Field({nullable: false})
-  outer_id: string
-
-  @Field({nullable: false})
-  article: string
-
-  @Field({nullable: false})
-  article_type: string
-}
-
-@ObjectType()
-export class ArticleDTO {
-
-  @Field({nullable: true})
-  article: string
-
-  @Field({nullable: true})
-  description: string
-
-  @Field({nullable: true})
-  muster: string
-
-  @Field({nullable: true})
-  title: string
-
-  @Field({nullable: true})
-  id: string
-
-  @Field({nullable: false})
-  article_img: string
-
-  @Field({nullable: false})
-  type: string
-
-  @Field({nullable: false})
-  edit_time: string
-
-  @Field({nullable: true})
-  author: string
-
-  @Field({nullable: true})
-  gather: string
-
-  @Field(() => [String])
-  labels: string[]
-
-  @Field({nullable: false})
-  categorys: string
-
-  @Field({nullable: false})
-  zan: string
-
-  @Field({nullable: false})
-  hot: string
-
-  @Field({nullable: false})
-  outer_id: string
-
-  @Field({nullable: true})
-  befollowed: number
-
-  @Field({nullable: false})
-  zan_status: Boolean
-
-  @Field({nullable: false})
-  follow_status: Boolean
-
-  @Field({nullable: false})
-  collection_status: Boolean
-
-  @Field({nullable: false})
-  author_img: string
-
-  @Field({nullable: false})
-  author_name: string
-
-  @Field({nullable: true})
   timestamp: string
+
+  @Field(()=> [Zan])
+  zan: Zan[]
 }
 
 @ObjectType()
-export class RecordsRes {
-  @Field(() => [ArticleDTO])
-  article_data: ArticleDTO[]
+export class RecordsDataPagenation{
+  @Field(()=> [RecordsArticleData])
+  data: RecordsArticleData[]
 
   @Field({nullable: false})
   next: number
 }
 
 @ObjectType()
-export class Befollowed {
-  @Field({nullable: true})
-  user_id: string
+export class ArticleDataPagenation{
+  @Field(()=> [ArticleData])
+  data: ArticleData[]
 
-  @Field({nullable: true})
-  gather_article_id: string
+  @Field({nullable: false})
+  next: number
+}
+
+@ObjectType({
+  implements: [UserInfoInter]
+})
+export class DynamicRes extends ArticleData{
+  @Field(()=> [ArticleData])
+  data: ArticleData[]
+
+  @Field({nullable: false})
+  next: number
+}
+
+@ObjectType({
+  implements: [GatherInter]
+})
+export class GatherData {
+
+}
+
+@ObjectType({
+  implements: [GatherInter]
+})
+export class AllArticlesInfo{
+  @Field({nullable: false})
+  author: UserData;
 }
 
 @ObjectType()
-export class Polymerization {
-  
-  @Field({nullable: true})
-  author: string
+export class AllArticlesPagenation {
+  @Field(()=> [AllArticlesInfo])
+  data: AllArticlesInfo[]
 
-  @Field({nullable: true})
-  author_name: string
+  @Field({nullable: false})
+  next: number
+}
 
-  @Field({nullable: true})
-  muster_id: string
+@ObjectType()
+export class AllGatherPagenation {
+  @Field(()=> [GatherData])
+  data: GatherData[]
 
-  @Field({nullable: true})
+  @Field({nullable: false})
+  next: number
+}
+
+@ObjectType()
+export class WritingArticle {
+  @Field({nullable: false})
+  type: ArticleType
+
+  @Field({nullable: false})
   gather_id: string
 
-  @Field({nullable: true})
-  muster_img: string
-
-  @Field({nullable: true})
-  article_data: number
-
-  @Field({nullable: true})
-  name: string
-
-  @Field({nullable: true})
-  type: MusterType
-
-  @Field({nullable: true})
-  description: string
-
-  @Field({nullable: true})
-  article_id: string
-}
-
-@ObjectType()
-export class DynamicRes {
-
-  @Field({nullable: true})
-  description: string
-
-  @Field({nullable: true})
-  title: string
-
-  @Field({nullable: true})
-  id: string
-
-  @Field({nullable: true})
-  article_img: string
-
-  @Field({nullable: true})
-  acticle_type: string
-
-  @Field({nullable: true})
-  edit_time: string
-
-  @Field({nullable: true})
-  author: string
-
-  @Field({nullable: true})
-  zan: string
-
-  @Field({nullable: true})
-  hot: string
-
-  @Field({nullable: true})
-  outer_id: string
-
-  @Field({nullable: true})
-  author_img: string
-
-  @Field({nullable: true})
-  author_name: string
-
-  @Field({ nullable: true })
-  name: string
-
-  @Field({ nullable: true })
-  user_img: string
-
-  @Field({ nullable: true })
-  open_id: string
+  @Field({nullable: false})
+  gather_name: string
 
   @Field({nullable: false})
-  zan_status: Boolean
+  gather_img: string
 
   @Field({nullable: false})
-  follow_status: Boolean
+  category: string
 
   @Field({nullable: false})
-  collection_status: Boolean
+  article_description: string
 
   @Field(() => [String])
   labels: string[]
 
-  @Field({nullable: false})
-  categorys: string
-
-  @Field({nullable: true})
-  type: string
+  @Field(() => [ArticleData])
+  article_data: ArticleData[]
 }
 
-@ObjectType()
-export class DraftArticle {
-  @Field(() => [String])
-  labels: string[]
-
-  @Field({nullable: true})
-  categorys: string
-
-  @Field({nullable: true})
-  description: string
-
-  @Field({nullable: true})
-  gather_id: string
-
-  @Field(() => [ArticleDTO], {nullable: true})
-  article_data: ArticleDTO
-
-  @Field(() => String, {nullable: true})
-  title: string
-
-  @Field(() => String, {nullable: true})
-  article: string
-
-  @Field(() => String, {nullable: true})
-  article_img: string
-
-  @Field(() => String, {nullable: true})
-  type: string
-
-  @Field(() => String, {nullable: true})
-  muster: string
-
-  @Field(() => String, {nullable: true})
-  id: string
-}
-
-@ObjectType()
-export class WritingList {
-
-  @Field(() => [ArticleIdDto])
-  muster_data: ArticleIdDto[]
-
-  @Field(() => [ArticleIdDto])
-  gather_data: ArticleIdDto[]
-
-}
-
-@ObjectType()
-class OuterId {
-  @Field({nullable: false})
-  outer_id: string
-}
-
-@ObjectType()
-class ArticleIdDto {
-  @Field(() => [OuterId])
-  article_data: OuterId[]
-}
-
-@ObjectType()
-export class collectionList {
-  @Field(() => [collection])
-  list: collection[]
-}
-
-
-@ObjectType()
-class collection {
-  @Field(() => String)
-  title: string
-
-  @Field(() => String)
-  hot: string
-
-  @Field(() => String)
-  zan: string
-
-  @Field(() => String)
-  edit_time: string
-}
-
-@ObjectType()
-export class collectionArticleRes {
-  @Field(() => [ArticleDTO])
-  list: ArticleDTO[]
-
-  @Field({nullable: false})
-  next: number
-
-  @Field({nullable: false})
-  count: number
-}
-@ObjectType()
-class LabelTypeInArticle {
-  @Field({nullable: false})
-  label_id: string
-
-  @Field({nullable: true})
-  name: string
-
-  @Field({nullable: true})
-  description: string
-} 
-
-@ObjectType()
-class Labels {
-  @Field()
-  Labels: LabelTypeInArticle
-}
-
-
-
-@ObjectType()
-export class AllArticles {
-  @Field({nullable: false})
-  title: string
-
-
-  @Field({nullable: false})
-  zan: string
-
-  @Field({nullable: false})
-  hot: string
-
-  @Field({nullable: false})
-  outer_id: string
-
-  @Field({nullable: false})
-  article_img: string
-
-  @Field({nullable: false})
-  article_type: string
-
-  @Field({nullable: false})
-  description: string
-
-  @Field({nullable: false})
-  edit_time: string
-
-  @Field(() => [Labels])
-  labels: Labels[]
-}
-
-@ObjectType()
-export class AllArticlesRes {
-  @Field({nullable: false})
-  next: number
-
-  @Field({nullable: false})
-  count: number
-
-  @Field(() => [AllArticles])
-  AllArticles: AllArticles[]
-}
-
-@ObjectType()
-export class AddArticleRes {
-  @Field({nullable: false})
-  article_id: string
-}
-
-@ObjectType()
-class AuthorInfo extends OuterId {
-  @Field({nullable: false})
-  uuid_user: string
-
-  @Field({nullable: false})
-  name: string
-
-  @Field({nullable: false})
-  user_img: string
-}
-
-@ObjectType()
-export class MusterArticleById {
-  @Field({nullable: false})
-  muster_img: string
-
-  @Field({nullable: false})
-  name: string
-
-  @Field({nullable: false})
-  author: AuthorInfo
-
-  @Field(() => [ArticleDTO])
-  article_data: ArticleDTO[]
-
-  @Field({nullable: false})
-  description: string
-}
-
-@ObjectType()
-export class MusterColumn {
-  @Field({nullable: false})
-  name: string
-
-  @Field({nullable: false})
-  description: string
-
-  @Field({nullable: false})
-  type: 'MUSTER'
-
-  @Field({nullable: false})
-  muster_id: string
-
-  @Field({nullable: false})
-  muster_img: string
-
-  @Field({nullable: false})
-  authorId: string
-}
+@ObjectType({
+  implements: [ArticlePanelStatusInter]
+})
+export class ArticlePanelStatus{}

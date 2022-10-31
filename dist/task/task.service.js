@@ -24,7 +24,7 @@ let TasksService = TasksService_1 = class TasksService {
     }
     handleCron() {
         this.gorse();
-        this.logger.debug('Called when the second is 45');
+        this.logger.debug('Called when the second is 6');
     }
     async gorse() {
         const file = new FormData();
@@ -36,7 +36,7 @@ let TasksService = TasksService_1 = class TasksService {
     }
 };
 __decorate([
-    (0, schedule_1.Interval)(1 * 1000 * 30),
+    (0, schedule_1.Interval)(1 * 1000 * 6),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)

@@ -13,215 +13,191 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ArticleResolver = void 0;
-const common_1 = require("@nestjs/common");
 const graphql_1 = require("@nestjs/graphql");
+const jwt_1 = require("@nestjs/jwt");
 const client_1 = require("@prisma/client");
-const gather_service_1 = require("../muster/gather.service");
-const muster_service_1 = require("../muster/muster.service");
+const date_fns_1 = require("date-fns");
+const constants_1 = require("../jwt/constants");
 const feedback_service_1 = require("../recommend/feedback/feedback.service");
+const item_service_1 = require("../recommend/item/item.service");
+const user_service_1 = require("../recommend/user/user.service");
+const search_service_1 = require("../search/search.service");
+const users_dto_1 = require("../users/users.dto");
 const users_service_1 = require("../users/users.service");
 const article_dto_1 = require("./article.dto");
 const article_service_1 = require("./article.service");
 let ArticleResolver = class ArticleResolver {
-    constructor(articleService, feedbackService, musterService, gatherArticle, userSerivce) {
+    constructor(articleService, feedbackService, userSerivce, jwtService, recommendItemService, searchService, rcommendUserService) {
         this.articleService = articleService;
         this.feedbackService = feedbackService;
-        this.musterService = musterService;
-        this.gatherArticle = gatherArticle;
         this.userSerivce = userSerivce;
+        this.jwtService = jwtService;
+        this.recommendItemService = recommendItemService;
+        this.searchService = searchService;
+        this.rcommendUserService = rcommendUserService;
     }
-    async getArticleById(id, context) {
-        const v = id[0];
-        let uid = context.req.session['uid'];
-        let status = false;
+    async getArticleById(id, token) {
+        let uid = undefined;
+        if (token) {
+            uid = this.jwtService.verify(token, {
+                secret: constants_1.jwtConstants.secret
+            }).uuid;
+        }
+        let zan_status = false;
         let follow_status = false;
         let collection_status = false;
-        let res = undefined;
-        if (v === 'M') {
-            res = await this.getMusterArticle(id);
-        }
-        else if (v === 'G') {
-            res = await this.getGatherArticle(id);
-        }
-        else {
-            return null;
-        }
+        let follow_user = false;
+        const article = await this.articleService.getArticle(id);
+        const gather = await this.articleService.getGather(article.gather_id);
         if (uid) {
             await this.userSerivce.addRecords(uid, id);
-            const findUser = await this.userSerivce.findUserZan(uid, id);
-            status = findUser.zan_list.length > 0;
-            collection_status = findUser.collection.length > 0;
-            follow_status = res.befollowed.find((element) => element === uid);
+            follow_user = await (await this.userSerivce.getFollowUserStatus(uid, gather.author.uuid)).follow.length > 0;
+            zan_status = !!article.zan.find((element) => element.authorId === uid);
+            follow_status = !!article.info.find((element) => element.uuid === uid);
+            collection_status = !!article.collection.find((element) => element.user_id === uid);
+            await this.feedbackService.insertFeedbacks({
+                FeedbackType: "read",
+                Timestamp: (0, date_fns_1.format)(new Date(), 'yyyy-MM-dd HH:mm:ss') + ' +0800 CST',
+                UserId: uid,
+                ItemId: id
+            });
         }
-        return Object.assign(Object.assign({}, res), { zan_status: status, follow_status: !!follow_status, collection_status, befollowed: res.befollowed.length });
+        return Object.assign(Object.assign({}, article), { zan_status,
+            follow_status,
+            collection_status,
+            follow_user, author: {
+                name: gather.author.name,
+                user_img: gather.author.user_img,
+                uuid: gather.author.uuid
+            }, gather, article_type: gather.article_type });
+    }
+    async insertFeeback(id, vid) {
+        await this.rcommendUserService.insertUser({
+            UserId: vid,
+            Labels: []
+        });
+        await this.feedbackService.insertFeedbacks({
+            FeedbackType: "read",
+            Timestamp: (0, date_fns_1.format)(new Date(), 'yyyy-MM-dd HH:mm:ss') + ' +0800 CST',
+            UserId: vid,
+            ItemId: id
+        });
+        return 200;
     }
     async getArticleByIdNotFB(id, context) {
-        const v = id[0];
-        let res = undefined;
-        if (v === 'M') {
-            res = await this.getMusterArticle(id);
+        const uid = context.req.session['uid'];
+        let zan_status = false;
+        let follow_status = false;
+        let collection_status = false;
+        let user = undefined;
+        const article = await this.articleService.getArticle(id);
+        const gather = await this.articleService.getGather(article.gather_id);
+        if (uid) {
+            user = await this.userSerivce.findOne(uid);
+            zan_status = !!article.zan.find((element) => element.authorId === uid);
+            follow_status = !!article.info.find((element) => element.uuid === uid);
+            collection_status = !!article.collection.find((element) => element.user_id === uid);
         }
-        else if (v === 'G') {
-            res = await this.getGatherArticle(id);
-        }
-        else {
-            return null;
-        }
-        const findUser = await this.userSerivce.findUserZan(context.req.session['uid'], id);
-        const status = findUser.zan_list.length > 0;
-        const collection_status = findUser.collection.length > 0;
-        const follow_status = res.befollowed.find((element) => element === context.req.session['uid']);
-        return Object.assign(Object.assign({}, res), { zan_status: status, follow_status: !!follow_status, collection_status, befollowed: res.befollowed.length });
+        return Object.assign(Object.assign({}, article), { zan_status,
+            follow_status,
+            collection_status, author: {
+                name: user.name,
+                user_img: user.user_img,
+                uuid: user.uuid
+            }, gather, article_type: gather.article_type });
+    }
+    async removeArticleById(id) {
+        await this.articleService.removeArticleById(id);
+        return 200;
     }
     async getRecords(page, context) {
         const records = await this.userSerivce.getRecords(page, context.req.session['uid']);
         const res = records.record.map(async (item) => {
-            const article_id = item.article_id.split('|')[1];
-            const article = await this.getArticleByIdNotFB(article_id, context);
+            const article = await this.getArticleByIdNotFB(item.article_id, context);
             return Object.assign(Object.assign({}, article), { timestamp: item.timestamp });
         });
         return {
-            article_data: res,
+            data: res,
             next: page + 1
         };
     }
-    async getWritingArticleById(id) {
-        const v = id[0];
-        let res = undefined;
-        let categorys = undefined;
-        let labels = undefined;
-        if (v === 'M') {
-            res = await this.getMusterArticle(id);
-            categorys = res.categorys;
-            labels = res.labels;
-        }
-        else {
-            res = await this.articleService.getGatherById(id);
-            res = Object.assign(Object.assign({}, res), { type: 'GATHER' });
-            categorys = res.categorys.map((item) => item.category)[0];
-            labels = res.labels.map((item) => item.label);
-        }
-        return Object.assign(Object.assign({}, res), { categorys,
-            labels });
+    async Search(query, page) {
+        const data = await this.searchService.Search(query, page);
+        const res = data.map(async (item) => {
+            const article = await this.articleService.getArticle(item);
+            const gather = await this.articleService.getGather(article.gather_id);
+            return Object.assign(Object.assign({}, article), { gather, author: {
+                    name: gather.author.name,
+                    uuid: gather.author.uuid,
+                    user_img: gather.author.user_img
+                }, article_type: gather.article_type });
+        });
+        return {
+            data: res,
+            next: page + 1
+        };
+    }
+    async SearchAuthorArticle(query, author_id, page) {
+        const data = await this.articleService.searchAuthorArticle(query, author_id, page);
+        return {
+            data,
+            next: page + 1,
+        };
+    }
+    async SearchAllArticle(query, page, context) {
+        const res = await this.articleService.searchAllArticle(query, context.req.session['uid']);
+        return {
+            data: res.articles,
+            next: page + 1
+        };
     }
     async getUserSavedApi(context) {
         const collection = await this.userSerivce.getUserSaved(context.req.session['uid']);
         const res = collection.collection.map(async (item) => {
-            const article = await this.getArticleById(item.article_id, context);
-            return {
-                title: article.title,
-                hot: article.hot,
-                zan: article.zan,
-                edit_time: article.edit_time
-            };
+            return await this.articleService.getArticle(item.article_id);
         });
         return {
-            list: res
+            data: res
         };
     }
-    async getDraftArticleById(id) {
-        const v = id[0];
-        let res = undefined;
-        if (v === 'M') {
-            res = await this.getMusterArticle(id);
-        }
-        else if (v === 'G') {
-            res = await this.articleService.getGatherById(id);
+    async collectArticle(id, context) {
+        const uid = context.req.session['uid'];
+        const data = await (await this.userSerivce.findArticleCollect(id, uid)).collection;
+        if (data.length) {
+            await this.userSerivce.removeCollect(uid, id);
         }
         else {
-            throw Error("article_id错误");
+            await this.userSerivce.collection(uid, id);
         }
-        return res;
-    }
-    addZan(id, type, context) {
-        if (type === 'MUSTER') {
-            this.articleService.addZanInMuster(id);
-        }
-        else if (type === 'GATHER') {
-            this.articleService.addZanInGather(id);
-        }
-        this.userSerivce.addUserZan(context.req.session['uid'], id);
         return 200;
-    }
-    async followedArticle(id, type, context) {
-        const uid = context.req.session['uid'];
-        await this.articleService.artilceBeFollowed(uid, id, type);
-        await this.userSerivce.collection(uid, id, uid + '|' + id);
-        return 200;
-    }
-    async getGatherArticle(article_id) {
-        let data = {};
-        try {
-            data = await this.articleService.getGatherArticle(article_id);
-        }
-        catch (error) {
-            throw new common_1.ForbiddenException('文章id错误');
-        }
-        const author = await this.gatherArticle.getGather(data.gather);
-        const user = await this.userSerivce.findOne(author.authorId);
-        return {
-            description: author.description,
-            article: data.article,
-            title: data.title,
-            img: data.article_img,
-            labels: author.labels.map((item) => item.label),
-            categorys: author.categorys[0].category,
-            author: author.authorId,
-            gather: author.gather_id,
-            id: data.outer_id,
-            type: data.article_type,
-            article_img: data.article_img,
-            befollowed: data.befollowed.map((item) => item.user_id),
-            author_img: user.user_img,
-            author_name: user.name,
-            hot: data.hot,
-            zan: data.zan,
-            edit_time: data.edit_time
-        };
-    }
-    async getMusterArticle(article_id) {
-        let data = {};
-        try {
-            data = await this.articleService.getMusterArticle(article_id);
-        }
-        catch (error) {
-            throw new common_1.ForbiddenException('文章id错误');
-        }
-        const author = await this.musterService.getMuster(data.muster);
-        const user = await this.userSerivce.findOne(author.authorId);
-        return {
-            description: data.description,
-            article: data.article,
-            title: data.title,
-            img: data.article_img,
-            labels: data.labels.map((item) => item.label),
-            categorys: data.categorys[0].category,
-            author: author.authorId,
-            muster: data.muster,
-            id: data.outer_id,
-            type: data.article_type,
-            article_img: data.article_img,
-            befollowed: data.befollowed.map((item) => item.user_id),
-            author_img: user.user_img,
-            author_name: user.name,
-            hot: data.hot,
-            zan: data.zan,
-            edit_time: data.edit_time
-        };
     }
     async dynamicApi(content, type, context) {
         switch (type) {
             case 'ZAN':
-                return await this.getArticleById(content, context);
+                return await this.getArticleByIdNotFB(content, context);
             case 'RELEASE':
-                return await this.getArticleById(content, context);
+                return await this.getArticleByIdNotFB(content, context);
             case 'FollowArticle':
-                return await this.getArticleById(content, context);
+                return await this.getArticleByIdNotFB(content, context);
             case 'COLLECTION':
-                return await this.getArticleById(content, context);
+                return await this.getArticleByIdNotFB(content, context);
             case 'Follow':
-                return await this.userSerivce.findOne(content);
+                const user = await this.userSerivce.findOne(content);
+                return {
+                    author: user
+                };
         }
+    }
+    async getDraft(page, context) {
+        const data = await this.userSerivce.getDraft(context.req.session['uid'], page);
+        const res = data.draft.map(async (item) => {
+            console.log(item);
+            return await this.getArticleByIdNotFB(item.article_id, context);
+        });
+        return {
+            data: res,
+            next: page + 1,
+        };
     }
     async getCollectionArticles(page, context) {
         const list = await (await this.userSerivce.getColletionArticles(context.req.session['uid'], page)).collection;
@@ -229,26 +205,87 @@ let ArticleResolver = class ArticleResolver {
             return await this.getArticleByIdNotFB(item.article_id, context);
         });
         return {
-            list: res,
+            data: res,
             next: page + 1,
-            count: res.length
         };
     }
-    async removeMusterArticleById(id, context) {
-        await this.articleService.removeMusterArticleById(id, context.req.session['uid']);
+    async indexPanelArticle(context) {
+        const lastestRecords = await (await this.userSerivce.getLastetRecords(context.req.session['uid'])).record[0].article_id;
+        const value = await this.recommendItemService.getItemNeighbors(lastestRecords);
+        console.log(value);
         return 200;
+    }
+    async getArticleNeighbors(id) {
+        const v = await this.recommendItemService.getItemNeighbors(id);
+        console.log(v);
+        return 200;
+    }
+    async followArticle(id, context) {
+        const uid = context.req.session['uid'];
+        const data = await (await this.articleService.findArticleFollow(id, uid)).info;
+        if (data.length) {
+            await this.articleService.remoceArticleFollow(id, uid);
+        }
+        else {
+            await this.articleService.artilceBeFollowed(uid, id);
+        }
+        return 200;
+    }
+    async getUserMessage(page, context) {
+        const data = await (await this.userSerivce.getMessage(context.req.session['uid'], page)).message;
+        return {
+            data,
+            next: page + 1,
+        };
+    }
+    async getWritingArticle(id) {
+        const article = await this.articleService.getArticle(id);
+        const gather = await this.articleService.getGather(article.gather_id);
+        return {
+            type: gather.article_type,
+            article_data: gather.article_type === 'GATHER' ? gather.articles : [article],
+            gather_id: gather.gather_id,
+            gather_name: gather.gather_name,
+            gather_img: gather.gather_img,
+            category: article.categorys[0].category_id,
+            labels: article.labels.map((item) => item.label_id),
+            article_description: gather.article_description
+        };
+    }
+    async getArticlePanelStatus(article_id, context) {
+        const uid = context.req.session['uid'];
+        const res = {
+            zan_status: false,
+            collect_status: false,
+            follow_status: false
+        };
+        if (uid) {
+            const data = await this.articleService.getArticlePanelStatus(uid, article_id);
+            res.zan_status = data.zan.length > 0;
+            res.collect_status = data.collection.length > 0;
+            res.follow_status = data.follow.length > 0;
+        }
+        return res;
     }
 };
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.ArticleDTO),
+    (0, graphql_1.Query)(() => article_dto_1.ArticleData),
     __param(0, (0, graphql_1.Args)('article_id')),
-    __param(1, (0, graphql_1.Context)()),
+    __param(1, (0, graphql_1.Args)('token', { nullable: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], ArticleResolver.prototype, "getArticleById", null);
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.ArticleDTO),
+    (0, graphql_1.Mutation)(() => Number),
+    __param(0, (0, graphql_1.Args)('article_id')),
+    __param(1, (0, graphql_1.Args)('vid')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], ArticleResolver.prototype, "insertFeeback", null);
+__decorate([
+    (0, graphql_1.Query)(() => article_dto_1.ArticleData),
     __param(0, (0, graphql_1.Args)('article_id')),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
@@ -256,7 +293,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ArticleResolver.prototype, "getArticleByIdNotFB", null);
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.RecordsRes),
+    (0, graphql_1.Query)(() => Number),
+    __param(0, (0, graphql_1.Args)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ArticleResolver.prototype, "removeArticleById", null);
+__decorate([
+    (0, graphql_1.Query)(() => article_dto_1.RecordsDataPagenation),
     __param(0, (0, graphql_1.Args)('page')),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
@@ -264,46 +308,48 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ArticleResolver.prototype, "getRecords", null);
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.DraftArticle),
-    __param(0, (0, graphql_1.Args)('article_id')),
+    (0, graphql_1.Query)(() => article_dto_1.ArticleDataPagenation),
+    __param(0, (0, graphql_1.Args)('query')),
+    __param(1, (0, graphql_1.Args)('page')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Number]),
     __metadata("design:returntype", Promise)
-], ArticleResolver.prototype, "getWritingArticleById", null);
+], ArticleResolver.prototype, "Search", null);
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.collectionList),
+    (0, graphql_1.Query)(() => article_dto_1.AllArticlesPagenation),
+    __param(0, (0, graphql_1.Args)('query')),
+    __param(1, (0, graphql_1.Args)('author')),
+    __param(2, (0, graphql_1.Args)('page')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Number]),
+    __metadata("design:returntype", Promise)
+], ArticleResolver.prototype, "SearchAuthorArticle", null);
+__decorate([
+    (0, graphql_1.Query)(() => article_dto_1.ArticleDataPagenation),
+    __param(0, (0, graphql_1.Args)('query')),
+    __param(1, (0, graphql_1.Args)('page')),
+    __param(2, (0, graphql_1.Context)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number, Object]),
+    __metadata("design:returntype", Promise)
+], ArticleResolver.prototype, "SearchAllArticle", null);
+__decorate([
+    (0, graphql_1.Query)(() => article_dto_1.ArticleDataPagenation),
     __param(0, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ArticleResolver.prototype, "getUserSavedApi", null);
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.DraftArticle),
-    __param(0, (0, graphql_1.Args)('article_id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], ArticleResolver.prototype, "getDraftArticleById", null);
-__decorate([
-    (0, graphql_1.Mutation)(() => Number),
-    __param(0, (0, graphql_1.Args)('data')),
-    __param(1, (0, graphql_1.Args)("type")),
-    __param(2, (0, graphql_1.Context)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, Object]),
-    __metadata("design:returntype", void 0)
-], ArticleResolver.prototype, "addZan", null);
-__decorate([
     (0, graphql_1.Mutation)(() => Number),
     __param(0, (0, graphql_1.Args)('id')),
-    __param(1, (0, graphql_1.Args)('type')),
-    __param(2, (0, graphql_1.Context)()),
+    __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
-], ArticleResolver.prototype, "followedArticle", null);
+], ArticleResolver.prototype, "collectArticle", null);
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.DynamicRes),
+    (0, graphql_1.Query)(() => article_dto_1.ArticleData),
     __param(0, (0, graphql_1.Args)('content')),
     __param(1, (0, graphql_1.Args)('type')),
     __param(2, (0, graphql_1.Context)()),
@@ -312,7 +358,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ArticleResolver.prototype, "dynamicApi", null);
 __decorate([
-    (0, graphql_1.Query)(() => article_dto_1.collectionArticleRes),
+    (0, graphql_1.Query)(() => article_dto_1.ArticleDataPagenation),
+    __param(0, (0, graphql_1.Args)('page')),
+    __param(1, (0, graphql_1.Context)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], ArticleResolver.prototype, "getDraft", null);
+__decorate([
+    (0, graphql_1.Query)(() => article_dto_1.ArticleDataPagenation),
     __param(0, (0, graphql_1.Args)('page')),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
@@ -321,19 +375,58 @@ __decorate([
 ], ArticleResolver.prototype, "getCollectionArticles", null);
 __decorate([
     (0, graphql_1.Query)(() => Number),
-    __param(0, (0, graphql_1.Args)('id')),
+    __param(0, (0, graphql_1.Context)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ArticleResolver.prototype, "indexPanelArticle", null);
+__decorate([
+    (0, graphql_1.Query)(() => Number),
+    __param(0, (0, graphql_1.Args)('article_id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ArticleResolver.prototype, "getArticleNeighbors", null);
+__decorate([
+    (0, graphql_1.Mutation)(() => Number),
+    __param(0, (0, graphql_1.Args)("article_id")),
     __param(1, (0, graphql_1.Context)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
-], ArticleResolver.prototype, "removeMusterArticleById", null);
+], ArticleResolver.prototype, "followArticle", null);
+__decorate([
+    (0, graphql_1.Query)(() => users_dto_1.MessageDataRes, { nullable: true }),
+    __param(0, (0, graphql_1.Args)('page')),
+    __param(1, (0, graphql_1.Context)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], ArticleResolver.prototype, "getUserMessage", null);
+__decorate([
+    (0, graphql_1.Query)(() => article_dto_1.WritingArticle),
+    __param(0, (0, graphql_1.Args)('article_id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ArticleResolver.prototype, "getWritingArticle", null);
+__decorate([
+    (0, graphql_1.Query)(() => article_dto_1.ArticlePanelStatus),
+    __param(0, (0, graphql_1.Args)('artcle_id')),
+    __param(1, (0, graphql_1.Context)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ArticleResolver.prototype, "getArticlePanelStatus", null);
 ArticleResolver = __decorate([
     (0, graphql_1.Resolver)(),
     __metadata("design:paramtypes", [article_service_1.ArticleService,
         feedback_service_1.FeedbackService,
-        muster_service_1.MusterService,
-        gather_service_1.GatherService,
-        users_service_1.UsersService])
+        users_service_1.UsersService,
+        jwt_1.JwtService,
+        item_service_1.RecommendItemService,
+        search_service_1.SearchService,
+        user_service_1.RcommendUserService])
 ], ArticleResolver);
 exports.ArticleResolver = ArticleResolver;
 //# sourceMappingURL=article.resolver.js.map

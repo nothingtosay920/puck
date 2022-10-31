@@ -16,10 +16,38 @@ let ArticleService = class ArticleService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async getGatherArticle(id) {
-        return await this.prisma.gatherArticle.update({
+    async findArticleFollow(outer_id, uuid) {
+        return await this.prisma.article.findUnique({
             where: {
-                outer_id: id
+                outer_id
+            },
+            select: {
+                info: {
+                    where: {
+                        uuid
+                    }
+                }
+            }
+        });
+    }
+    async remoceArticleFollow(outer_id, uuid) {
+        return await this.prisma.article.update({
+            where: {
+                outer_id
+            },
+            data: {
+                info: {
+                    disconnect: {
+                        uuid
+                    }
+                }
+            }
+        });
+    }
+    async getArticle(id) {
+        return await this.prisma.article.update({
+            where: {
+                outer_id: id,
             },
             data: {
                 hot: {
@@ -27,98 +55,156 @@ let ArticleService = class ArticleService {
                 }
             },
             include: {
-                befollowed: true,
-            }
-        });
-    }
-    async getMusterArticle(id) {
-        return await this.prisma.musterArticle.update({
-            where: {
-                outer_id: id
-            },
-            data: {
-                hot: {
-                    increment: 1
-                },
-            },
-            include: {
-                labels: true,
+                info: true,
+                zan: true,
+                collection: true,
                 categorys: true,
-                befollowed: true,
+                labels: true,
             }
         });
     }
-    async addZanInMuster(id) {
-        return await this.prisma.musterArticle.update({
+    async getGather(gather_id) {
+        return await this.prisma.gather.findUnique({
             where: {
-                outer_id: id
+                gather_id
             },
-            data: {
-                zan: {
-                    increment: 1
-                }
-            }
-        });
-    }
-    async addZanInGather(id) {
-        return await this.prisma.gatherArticle.update({
-            where: {
-                outer_id: id
-            },
-            data: {
-                zan: {
-                    increment: 1
-                }
-            }
-        });
-    }
-    async readingsMuster(id) {
-        return await this.prisma.musterArticle.update({
-            where: {
-                outer_id: id
-            },
-            data: {
-                readings: {
-                    increment: 1
+            select: {
+                articles: {
+                    select: {
+                        outer_id: true,
+                        title: true,
+                        article: true,
+                        description: true,
+                        article_img: true,
+                        edit_time: true
+                    }
                 },
-                hot: {
-                    increment: 1
-                }
+                gather_id: true,
+                gather_name: true,
+                article_type: true,
+                author: true,
+                gather_img: true,
+                article_description: true
             }
         });
     }
-    async artilceBeFollowed(uid, id, type) {
-        if (type === 'GATHER') {
-            return await this.prisma.gatherArticle.update({
-                where: {
-                    outer_id: id
-                },
-                data: {
-                    befollowed: {
-                        create: {
-                            user_id: uid
+    async removeArticleById(id) {
+        return await this.prisma.article.delete({
+            where: {
+                outer_id: id
+            },
+        });
+    }
+    async searchAllArticle(query, uid) {
+        return await this.prisma.user.findUnique({
+            where: {
+                uuid: uid
+            },
+            select: {
+                articles: {
+                    select: {
+                        articles: {
+                            where: {
+                                title: {
+                                    contains: query
+                                }
+                            }
                         }
                     }
                 }
-            });
-        }
-        else if (type === 'MUSTER') {
-            return await this.prisma.musterArticle.update({
-                where: {
-                    outer_id: id
-                },
-                data: {
-                    befollowed: {
-                        create: {
-                            user_id: uid
-                        }
+            }
+        });
+    }
+    async searchGatherArticle(query, uid) {
+        return await this.prisma.user.findUnique({
+            where: {
+                uuid: uid
+            },
+            select: {
+                articles: {
+                    where: {
+                        article_type: 'GATHER'
+                    },
+                    select: {
+                        articles: {
+                            where: {
+                                title: {
+                                    contains: query
+                                }
+                            }
+                        },
                     }
                 }
-            });
-        }
-        {
-            throw Error();
-        }
+            }
+        });
+    }
+    async searchColumnArticle(query, uid) {
+        return await this.prisma.user.findUnique({
+            where: {
+                uuid: uid
+            },
+            select: {
+                articles: {
+                    where: {
+                        article_type: {
+                            not: 'GATHER'
+                        }
+                    },
+                    select: {
+                        articles: {
+                            where: {
+                                title: {
+                                    contains: query
+                                }
+                            }
+                        },
+                    }
+                }
+            }
+        });
+    }
+    async searchAuthorArticle(query, uid, page) {
+        return await this.prisma.gather.findMany({
+            where: {
+                authorId: uid,
+                articles: {
+                    every: {
+                        outer_id: {
+                            not: ""
+                        },
+                        title: {
+                            contains: query
+                        }
+                    }
+                },
+                gather_release: true
+            },
+            include: {
+                articles: {
+                    include: {
+                        zan: true,
+                        categorys: true,
+                        labels: true,
+                        info: true
+                    }
+                },
+                author: true,
+            },
+        });
+    }
+    async artilceBeFollowed(uid, id) {
+        return await this.prisma.article.update({
+            where: {
+                outer_id: id
+            },
+            data: {
+                info: {
+                    connect: {
+                        uuid: uid
+                    }
+                }
+            }
+        });
     }
     async getGatherById(id) {
         return await this.prisma.gather.findUnique({
@@ -126,51 +212,44 @@ let ArticleService = class ArticleService {
                 gather_id: id
             },
             include: {
-                article_data: true,
-                categorys: {
-                    select: {
-                        category: true
+                articles: {
+                    include: {
+                        categorys: true,
+                        labels: true
                     }
                 },
-                labels: {
-                    select: {
-                        label: true
-                    }
-                }
             }
         });
     }
-    async removeMusterArticleById(id, uid) {
-        await this.prisma.musterArticle.delete({
+    async getArticlePanelStatus(uuid, article_id) {
+        return await this.prisma.user.findUnique({
             where: {
-                outer_id: id,
+                uuid
             },
-        });
-        await this.prisma.user.update({
-            where: {
-                uuid_user: uid
-            },
-            data: {
-                dynamic: {
-                    deleteMany: {
-                        content: {
-                            contains: id
+            select: {
+                zan: {
+                    where: {
+                        article_id: {
+                            equals: article_id
+                        }
+                    }
+                },
+                follow: {
+                    where: {
+                        follow_id: {
+                            equals: article_id
                         }
                     }
                 },
                 collection: {
-                    deleteMany: {
-                        article_id: id
-                    }
-                },
-                record: {
-                    deleteMany: {
-                        article_id: id
+                    where: {
+                        collect_id: {
+                            equals: article_id
+                        }
                     }
                 }
             }
         });
-        return 200;
     }
 };
 ArticleService = __decorate([

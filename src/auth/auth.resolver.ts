@@ -1,87 +1,95 @@
 import { ExecutionContext, Req, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { DynamicType } from '@prisma/client';
-import { validateOrReject } from 'class-validator';
-import { AddArticleRes, AllArticles, AllArticlesRes, ArticleDTO, MusterArticleById, MusterColumn, Polymerization, WritingList } from 'src/article/article.dto';
-import { CMuster } from 'src/article/article.input';
+import { format } from 'date-fns';
+import { AllArticlesInfo, AllArticlesPagenation, AllGatherPagenation, ArticleData, ArticleDataPagenation, Draft, DraftRes, GatherData } from 'src/article/article.dto';
 import { UserAuthGuard } from 'src/guard/user-auth.guard';
-import { BaseMusterInfo, BaseUserInfo, Draft, Dynamic, DynamicApiRes, LoginDTO, LogOutDto, UsersDATA } from 'src/users/users.dto';
-import { GatherInput, MusterInput } from 'src/users/users.input';
+import { FeedbackService } from 'src/recommend/feedback/feedback.service';
+import { RecommendService } from 'src/recommend/recommend/recommend.service';
+import { UserBeFollowed, UserFollowedItem } from 'src/recommend/user/user.dto';
+import { RcommendUserService } from 'src/recommend/user/user.service';
+import { BaseMusterData, BaseMusterInfo, BaseUserInfo, Dynamic, DynamicApiRes, MessageData, UsersDATA } from 'src/users/users.dto';
+import { GatherInput, SavedArticleInput } from 'src/users/users.input';
 import { UsersService } from 'src/users/users.service';
 import { AuthService, IContext } from './auth.service';
 
 @Resolver()
 export class AuthResolver {
 
-  constructor(private readonly authService: AuthService, private readonly userService: UsersService) {}
+  constructor(private readonly authService: AuthService, 
+    private readonly userService: UsersService,
+    private readonly feedbackService: FeedbackService,
+    private recommendService: RecommendService
+
+  ) {}
+
   
-  @Mutation(() => LoginDTO)
-  Login(@Args("phone") phone: string, @Context() context: IContext) {
-    return this.authService.Login(phone, context)
-  }
-
-  // @UseGuards(UserAuthGuard)
-  // @Mutation(() => String)
-  // addGatherArticle(@Args("data") data: GatherInput, @Context() context: IContext) {
-  //   return this.userService.createGather(data, context)
-  // }
-
-  // @UseGuards(UserAuthGuard)
-  // @Mutation(() => String)
-  // addMusterArticle(@Args("mArticle") mArticle: MusterInput, @Context() context: IContext) {
-  //   return this.userService.createMusterArticle(mArticle, context)
-  // }
-
-  @Mutation(() => AddArticleRes)
-  async addMuster(@Args('data') data: MusterInput, @Context() context: IContext) {
-    return await this.userService.createMuster(data, context.req.session['uid'])
-  }
-
   @Mutation(() => Number)
-  savedMuster(@Args('data') data: MusterInput, @Context() context: IContext) {
-    return this.userService.savedMuster(data, context.req.session['uid'])
-  }
-  @Mutation(() => AddArticleRes)
-  addGather(@Args('data') data: GatherInput, @Context() context: IContext) {
-    console.log(data.labels);
-    
-    return this.userService.createGather(data, context.req.session['uid'])
+  async Login(@Args("phone") phone: string, @Context() context: IContext) {
+    await this.authService.Login(phone, context)
+    return 200
   }
 
+  @UseGuards(UserAuthGuard)
   @Mutation(() => Number)
-  saveGather(@Args('data') data: GatherInput, @Context() context: IContext) {
-    return this.userService.savedGather(data, context.req.session['uid'])
+  async addArticle(@Args('data') data: SavedArticleInput, @Context() context: IContext) {
+    await this.userService.createArticle(data, context.req.session['uid'])
+    return 200
   }
 
+  @UseGuards(UserAuthGuard)
+  @Mutation(() => Number)
+  async savedArticle(@Args('data') data: SavedArticleInput, @Context() context: IContext) {
+    await this.userService.saveArticle(data, context.req.session['uid'])
+    return 200
+  }
 
   // 添加muster
+  @UseGuards(UserAuthGuard)
   @Mutation(() => Number)
-  async createMuster(@Args('data') data: CMuster, @Context() context: IContext) {
-     await this.userService.cMuster(data, context.req.session['uid'])
+  async createMuster(@Args('data') data: GatherInput, @Context() context: IContext) {
+     await this.userService.createColumn(data, context.req.session['uid'])
      return 200
   } 
 
-  @Query(() => [MusterColumn])
+  @Query(() => [GatherData])
   async getMusterColumn(@Context() context: IContext) {
-     return await (await this.userService.getMusterColumn(context.req.session['uid'])).muster_data
+    const articles = await this.userService.getColumn(context.req.session['uid'])
+    return articles.articles
   }
 
-  // @UseGuards(UserAuthGuard)
-  // @Mutation(() => String)
-  // saveMusterArticle(@Args("mArticle") mArticle: MusterInput, @Context() context: IContext) {
-  //   return this.userService.saveMusterArticle(mArticle, context)
-  // }
+  @Query(() => GatherData)
+  async getColumnArticles(@Args('data') data: string) {
+    return await this.userService.getColumnArticle(data)
+  }
+
+  @UseGuards(UserAuthGuard)
+  @Mutation(() => Number)
+  async addZan(@Args('data') id: string, @Context() context: IContext) {
+    const uid = context.req.session['uid']
+    const zan = await (await this.userService.findZan(uid, id)).zan
+    
+    if (zan.length) {
+      await this.userService.removeZan(uid, id)
+    } else {
+      await this.userService.addZan(uid, id)
+      await this.feedbackService.insertFeedbacks({
+        FeedbackType: "star",
+        Timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss') + ' +0800 CST',
+        UserId: uid,
+        ItemId: id
+      })
+    }
+    
+   return 200
+ }
+
 
   @Query(() => BaseUserInfo)
-  getUserInfo(@Context() context: IContext) {
-    return this.userService.getUserInfo(context.req.session['uid'])
+  async getUserInfo(@Context() context: IContext) {
+    return await this.userService.getUserInfo(context.req.session['uid'])
   }
 
-  @Query(() => [Draft])
-  async getDraft(@Context() context: IContext) {
-    const user = await this.userService.getDraft(context.req.session['uid'])
-    return user.draft
-  }
+
 
   @Query(() => DynamicApiRes)
   async getDynamic(@Args('page') page: number, @Context() context: IContext) {
@@ -93,130 +101,104 @@ export class AuthResolver {
     }
   }
 
-  @Query(() => BaseMusterInfo)
-  getBaseMusterInfo(@Context() context: IContext) {
-    return this.userService.getBaseMusterInfo(context.req.session['uid'])
+  @Query(() => [BaseMusterData], {nullable: true})
+  async getBaseMusterInfo(@Context() context: IContext) {
+    return await (await this.userService.getBaseMusterInfo(context.req.session['uid'])).articles
   }
 
-
-  @Query(() => Number)
-  async saveArticle(@Args('data') data: string, @Context() context: IContext) {
-     await this.userService.saveArticle(context.req.session['uid'], data)
-     return 200
-  }
-
-
-  @Query(() => [Polymerization])
-  async getAllMuster(@Args('page') page: number, @Context() context: IContext) {
-    const article =  await this.userService.getAllMusterArticles(context.req.session['uid'], page)
-    const res = article.map((item) => {
-      return {
-        ...item,
-        author_name: item.author.name,
-        author: item.author.uuid_user,
-        article_data: item.article_data.length,
-        name: item.name ? item.name : item.article_data[0].title,
-        muster_img: item.muster_img ? item.muster_img : item.article_data[0].article_img,
-        description: item.description ? item.description : item.article_data[0].description,
-        article_id: item.type === 'SINGLE' ? item.article_data[0].outer_id : null
-      }
-    })
-    return res
-  }
-
-  @Query(() => MusterArticleById)
-  async getMusterInfoById(@Args('mid') mid: string) {
-    return await this.userService.getMusterArticleById(mid)
-  }
-
-
-
-  @Query(() => [Polymerization])
-  async getGatherArtilces(@Context() context: IContext) {
-    const article = await this.userService.getAllGatherArticlesPagenation(context.req.session['uid'])
-
-    const res = article.map((item) => {
-      return {
-        ...item,
-        author_name: item.author.name,
-        author: item.author.uuid_user,
-        article_data: item.article_data.map((item) => {
-          return {
-            ...item,
-            befollowed: item.befollowed.length
-          }
-        })
-      }
-    })
-    return res
-  }
-
-  @Query(() => AllArticlesRes)
-  async getAllArticles(@Args('page') page: number, @Context() context: IContext) {
-    const muster = await this.userService.getAllMusterArticlesPagenation(context.req.session['uid'], page)
-    const musterArticle = muster.reduce((prev, current) => {
-      prev.push(...current.article_data)
-      return prev
-    }, [])
-  
-    const gather = await (await this.userService.getAllGatherArticlesPagenation(context.req.session['uid'], page)).reduce((prev, current) => {
-      prev.push(...current.article_data.map((item) => {
+  @Query(() => [ArticleData])
+  async getSingleInfo(@Context() context: IContext) {
+    const data = await this.userService.getSingleInfo(context.req.session['uid'])
+    const res = data.articles.reduce((prev, current) => {
+      prev.push(...current.articles.map((item) => {
         return {
           ...item,
-          labels: current.labels
+          article_type: current.article_type
         }
       }))
       return prev
     }, [])
-    const res = [...musterArticle, ...gather].sort((a, b) => {
-      return a.edit_time - b.edit_time
-    })
-    
+    return res
+
+  }
+
+
+  @Query(() => AllGatherPagenation)
+  async getAllColumnArtilces(@Args('page') page: number, @Context() context: IContext) {
+    const data = await this.userService.getAllColumnArtilcesPagenation(context.req.session['uid'], page)
     return {
-      AllArticles: res,
-      next: page + 1,
-      count: res.length
+      data: data.articles,
+      next: page + 1
     }
   }
 
-
-  @Mutation(() => LogOutDto)
-  LogOut(@Context() context: IContext) {
-    console.log(context.req.session['uid']);
-    
-    return this.authService.LogOut(context)
+  @Query(() => [GatherData])
+  async getGatherArtilces(@Context() context: IContext) {
+    const data = await this.userService.getAllGatherArticlesPagenation(context.req.session['uid'])
+    return data.articles
   }
 
-  // writing页article
-  @Query(() => WritingList)
-  async getWritingArticle(@Args('uid') uid: string) {
-    return await this.userService.getWritingArticle(uid)
+  @Query(() => AllArticlesPagenation)
+  async getAllArticlesPagenation(@Args('page') page: number, @Context() context: IContext) {
+    const articles = await this.userService.getAllArticles(context.req.session['uid'], page)
+    return {
+      data: articles,
+      next: page + 1,
+    }
+  }
+
+  @Query(() => [AllArticlesInfo])
+  async getAllArticles(@Context() context: IContext) {
+    const articles = await this.userService.getAllArticles(context.req.session['uid'])
+    return articles
   }
 
 
-  // 写接口 usersDto
-  // @UseGuards()
-  @Query(() => UsersDATA)
-   getUserData(@Context() context: IContext) {
-    return this.authService.getUserData(context)
-  }
-
-  @UseGuards(UserAuthGuard)
   @Mutation(() => Number)
-  async followedUser(@Args('uid') uid: string, @Args('followed_id') followed_id: string) {
-    await this.userService.followUser(uid, followed_id)
-    await this.userService.beFollowUser(followed_id, uid)
+  LogOut(@Context() context: IContext) {
+    this.authService.LogOut(context)
     return 200
   }
 
-  @Query(() => Number)
+  // 写接口 usersDto
+  // @UseGuards()
+  @Query(() => UsersDATA, {nullable: true})
+  async getUserData(@Context() context: IContext) {
+    const uid = context.req.session['uid']
+    
+    if (uid) {
+      return await this.authService.getUserData(uid)
+    } else {
+      return {
+        name: null,
+        uuid: null,
+        user_img: null
+      }
+    }
+  }
+
+  @Mutation(() => Number)
+  async followedUser(@Context() context: IContext, @Args('followed_id') followed_id: string) {
+    const uid = context.req.session['uid']
+    await this.userService.followUser(uid, followed_id)
+    await this.userService.addInfo(followed_id, uid)
+    return 200
+  }
+
+  @Query(() => UserBeFollowed)
   async getBeFollowedNum(@Context() context: IContext) {
-    return  (await this.userService.userBeFollowedNum(context.req.session['uid'])).be_follow.length
+    return  (await this.userService.userBeFollowed(context.req.session['uid'])).info
   }
 
-  @Query(() => Boolean)
-  async getBeFollowedStatus(follow_user: string, @Context() context: IContext) {
-    return await (await this.userService.userBeFollowedStatus(context.req.session['uid'], follow_user)).be_follow.length > 0
-  }
+  @Query(() => [String], {nullable: true})
+  async getUserRecommend(@Args('page') page: number, @Context() context: IContext) {
+     return await this.recommendService.userRecommend(context.req.session['uid'], page)
+  } 
 
+
+  // @Query(() => [UserFollowedItem], {nullable: true})
+  // async getUserFollow(@Context() context: IContext) {
+  //   const uid = context.req.session['uid']
+  //   return await this.authService.getUserFollow(uid)
+  // }
 }

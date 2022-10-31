@@ -1,452 +1,648 @@
 import { Dependencies, Injectable } from '@nestjs/common';
-import { DynamicType, Prisma, User } from '@prisma/client';
+import { ElasticsearchService } from '@nestjs/elasticsearch';
+import { DynamicType, Gather, Prisma, User } from '@prisma/client';
 import { format } from 'date-fns';
 import { nanoid } from 'nanoid';
-import { firstValueFrom, map, take } from 'rxjs';
 import { AppService } from 'src/app.service';
-import { CMuster } from 'src/article/article.input';
 import { IContext } from 'src/auth/auth.service';
 import { CategoryService } from 'src/category/category.service';
-import { ListenerService } from 'src/emit/listener';
 import { LabelService } from 'src/label/label.service';
 import { RecommendItemService } from 'src/recommend/item/item.service';
-import { RcommendUserService } from 'src/recommend/user/user.service';
-import { GatherInput, MusterInput } from './users.input';
+import { GatherInput, SavedArticleInput } from './users.input';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: AppService,
-     private ItemService: RecommendItemService,
-     private categoryService: CategoryService,
-     private labelService: LabelService
-     ) {}
+    private ItemService: RecommendItemService,
+    private categoryService: CategoryService,
+    private labelService: LabelService,
+    private elasticsearchService: ElasticsearchService
+  ) {}
 
-  async saveMusterArticle(article: MusterInput, context: IContext) {
-    const uid: string = context.req.session['uid']
-    const outer_id = 'M' + nanoid()
-    const time = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-
-    await this.prisma.user.update({
+  async getUserFollow(uuid: string) {
+    return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid
+        uuid
       },
-      data: {
-        muster_data: {
-          create: {
-            article_data: {
-              create: {
-                article: article.article_data.article,
-                title: article.article_data.title,
-                outer_id,
-                description: article.article_data.description,
-                article_img: article.article_data.articleImg,
-                edit_time: time,
-                categorys: {
-                  create: {
-                   category: article.category
-                  }
-                },
-                labels: {
-                  createMany: {
-                    data: article.labels
-                  }
-                },
-              }
-            },
-            muster_id: nanoid(),
-            muster_img: article.muster_img,
-            description: article.muster_desc
-          },
-        },
-        draft: {
-          create: {
-            article_id: outer_id,
-            type: "MUSTER",
-            time_stmap: time,
-            title: article.article_data.title
+      select: {
+        follow: {
+          select: {
+            follow_id: true
           }
         }
       }
     })
-    return outer_id
   }
 
-  async savedGather(article: GatherInput, context: IContext) {
-    const uid: string = context.req.session['uid']
-    const gather_id = nanoid()
-    const articles = article.article_data.map((item, index) => {
-      let id = 'G' + nanoid()
-      return {
-        ...item,
-        outer_id: id,
-        edit_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-        release: true,
+  async findArticleCollect(outer_id: string, uuid: string) {
+    return await this.prisma.user.findUnique({
+      where: {
+        uuid
+      },
+      select: {
+        collection: {
+          where: {
+            article_id: outer_id
+          }
+        }
       }
     })
-    
-    await this.prisma.user.update({
+  }
+
+  async userBeFollowed(uid: string) {
+    return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid
+        uuid: uid
+      },
+      select: {
+        info: {
+          select: {
+            uuid: true
+          }
+        }
+      }
+    })
+  }
+  
+  // 
+  async addInfo(uid: string, info_id: string) {
+    return await this.prisma.user.update({
+      where: {
+        uuid: uid
       },
       data: {
-        gather_data: {
-          upsert: {
-            where: {
-              gather_id: article.gather_id
-            },
-            create: {
-              article_data: {
-                createMany: {
-                  data: articles
-                }
-              },
-              categorys: {
-                create: {
-                  category: article.category
-                }
-              },
-              labels: {
-                createMany: {
-                  data: article.labels
-                }
-              },
-              description: article.description,
-              gather_id,
-              gather_img: article.gather_img
-            },
-            update: {
-              article_data: {
-                update: {
-                  where: {},
-                  data: article.article_data
-                }
-              },
-              categorys: {
-                create: {
-                  category: article.category
-                }
-              },
-              labels: {
-                createMany: {
-                  data: article.labels
-                }
-              },
-              description: article.description,
+        info: {
+          connect: {
+            uuid: info_id
+          }
+        }
+      }
+    })
+  }
+
+  async getMessage(uuid: string, page: number) {
+    return await this.prisma.info.findUnique({
+      where: {
+        uuid
+      },
+      include: {
+        message: {
+          take: 5,
+          skip: 5 * page,
+          include: {
+            info: {
+              select: {
+                reading_time: true
+              }
             }
           }
         },
+        
+      },
+      
+    })
+  }
+
+  async findZan(uuid: string, article_id: string) {
+    return await this.prisma.user.findUnique({
+      where: {
+        uuid,
+        
+      },
+      select: {
+        zan: {
+          where: {
+            article_id
+          }
+        }
+      }
+    })
+  }
+
+  async saveArticle(article: SavedArticleInput, uid: string) {
+    const time = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+    const update_list= article.article_data.map((item) => {
+      return {
+        where: {
+          outer_id: item.outer_id
+        },
+        data: item
       }
     })
 
-    return 200
-  }
+    const articles_data = article.article_data.map((item) => {
+      return {
+        ...item,
+        categorys: {
+          connect: {
+            category_id: article.category
+          }
+        },
+        labels: {
+          connect: article.labels.map((item) => ({
+              label_id: item
+          }))
+        }
+      }
+    })
 
-  // async createMusterArticle(article: MusterInput, context: IContext) {
-  //   const uid: string = context.req.session['uid']
-  //   const outer_id = 'M' + nanoid()
-  //   const category = await this.categoryService.findCategoryById(article.category)
-  //   const labels = await this.labelService.findLabelsById(article.labels.map((item) => item.label))
-  //   const labels_name = labels.map((item) => item.description)
-  //   const itemData = {
-  //     ItemId: outer_id,
-  //     Timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-  //     Labels: labels_name,
-  //     Comment: null,
-  //     Categories: [category.description, ...labels_name]
-  //   }
-  //   await this.prisma.user.upsert({
-  //     where: {
-  //       uuid_user: uid
-  //     },
-  //     update: {
-  //       muster_data: {
-  //         create: {
-  //           article_data: {
-  //             create: {
-  //               article: article.article_data.article,
-  //               title: article.article_data.title,
-  //               outer_id,
-  //               description: article.article_data.description,
-  //               article_img: article.article_data.articleImg,
-  //               release: true,
-  //               edit_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-  //               categorys: {
-  //                 create: {
-  //                  category: article.category
-  //                 }
-  //               },
-  //               labels: {
-  //                 createMany: {
-  //                   data: article.labels
-  //                 }
-  //               },
-  //             }
-  //           },
-  //           muster_id: nanoid(),
-  //         },
-  //       },
-  //       dynamic: {
-  //         create: {
-  //           type: "RELEASE",
-  //           content: outer_id,
-  //           time_tamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-  //         }
-  //       }
-  //     }
-  //   })
-  //   await this.ItemService.insertItem(itemData)
-  //   // await this.listenerService.handleUserCreatedEvent()
-  //   return outer_id
-  // }
-
-  async createMuster(article: MusterInput, uid: string) {
-
-    const outer_id = 'M' + nanoid()
-    const category = await this.categoryService.findCategoryById(article.category)
     
-    const labels = await this.labelService.findLabelsById(article.labels.map((item) => item.label))
-    const labels_name = labels.map((item) => item.description)
-    const itemData = {
-      ItemId: outer_id,
-      Timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-      Labels: labels_name,
-      Comment: null,
-      Categories: [category.description, ...labels_name]
-    }
-    await this.prisma.user.update({
-      where: {
-        uuid_user: uid
-      },
-      data: {
-        muster_data: {
-          upsert: {
-            where: {
-              muster_id:article.muster_id
-            },
-            create: {
-              muster_id: nanoid(),
-              name: "",
-              article_data: {
+    const column_update_data = article.article_data.map((item) => {
+      return {
+        where: {
+          outer_id: item.outer_id
+        },
+        create: {
+          ...item,
+          categorys: {
+            connect: {
+              category_id: article.category
+            }
+          },
+          labels: {
+            connect: article.labels.map((item) => ({
+                label_id: item
+            }))
+          }
+        },
+        update: item
+      }
+    })
+
+    const delete_data = article.article_data.map((item) => {
+      return item.outer_id
+    })
+    
+     if (article.article_type === 'GATHER') {
+      await this.prisma.user.update({
+        where: {
+          uuid: uid
+        },
+        data: {
+          articles: {
+            upsert: {
+              where: {
+                gather_id: article.gather_id
+              },
+              create: {
+                article_description: article.article_description,
+                article_type: article.article_type,
+                gather_id: article.gather_id,
+                gather_img: article.gather_img,
+                gather_name: article.gather_name,
+              },
+              update: {
+                article_description: article.article_description,
+                article_type: article.article_type,
+                gather_id: article.gather_id,
+                gather_img: article.gather_img,
+              }
+            }
+            
+          },
+        }
+      })
+
+      // connect
+      article.article_data.forEach( async (item) => {
+        await this.prisma.gather.update({
+          where: {
+            gather_id: article.gather_id
+          },
+          data: {
+            articles: {
+              upsert: {
+                where: {
+                  outer_id: item.outer_id
+                },
                 create: {
-                  article: article.article_data.article,
-                  article_img: article.article_data.articleImg,
-                  description: article.article_data.description,
-                  title: article.article_data.title,
-                  
-                  outer_id: outer_id,
-                  edit_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-                  release: true,
+                  ...item,
                   categorys: {
-                    create: {
-                      category: article.category
+                    connect: {
+                      category_id: article.category
                     }
                   },
                   labels: {
-                    createMany: {
-                      data: article.labels
+                    connect: article.labels.map((item) => ({
+                      label_id: item
+                    }))
+                  }
+                },
+                update: {
+                  ...item,
+                  categorys: {
+                    connect: {
+                      category_id: article.category
+                    }
+                  },
+                  labels: {
+                    connect: article.labels.map((item) => ({
+                      label_id: item
+                    }))
+                  }
+                }
+              }
+            }
+          }
+        })
+      })
+
+
+     } else {
+      await this.prisma.user.update({
+        where: {
+          uuid: uid
+        },
+        data: {
+          articles: {
+            upsert: {
+              where: {
+                gather_id: article.gather_id
+              },
+              create: {
+                articles: {
+                  create: articles_data
+                },
+                article_description: article.article_description,
+                article_type: article.article_type,
+                gather_id: article.gather_id,
+              },
+              update: {
+                articles: {
+                  upsert: column_update_data,
+                  deleteMany: {
+                    outer_id: {
+                      notIn: delete_data
                     }
                   }
-                }
-              },
-              type: 'SINGLE',
-              muster_img: article.muster_img ? article.muster_img : '',
-              description: article.muster_desc ? article.muster_desc : ''
-
-            },
-            update: {
-              article_data: {
-                update: {
-                  where: {
-                    outer_id: article.muster_article_id
-                  },
-                  data: {
-                    article: article.article_data.article,
-                    title: article.article_data.title,
-                    description: article.article_data.description,
-                    article_img: article.article_data.articleImg
-                  }
-                }
-              },
-              type: 'MUSTER'
+                },
+              }
             }
-          }
+            
+          },
+        }
+      })
+
+     }
+   
+    if (article.article_type === 'GATHER') {
+      await this.prisma.user.update({
+        where: {
+          uuid: uid
         },
-        dynamic: {
-          create: {
-            content: article.muster_article_id ? article.muster_article_id : outer_id,
-            type: 'RELEASE',
-            time_tamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-          }
-        }
-      }
-    })
-    if (!article.muster_id && !article.muster_article_id) {
-      await this.ItemService.insertItem(itemData)
-    }
-    return {
-      article_id: article.muster_article_id ? article.muster_article_id : outer_id
-    }
-  }
-
-  async savedMuster(article: MusterInput, uid: string) {
-    const outer_id = 'M' + nanoid()
-    await this.prisma.user.update({
-      where: {
-        uuid_user: uid
-      },
-      data: {
-        muster_data: {
-          upsert: {
-            where: {
-              muster_id:article.muster_id
-            },
-            create: {
-              muster_id: nanoid(),
-              name: "",
-              article_data: {
-                create: {
-                  article: article.article_data.article,
-                  article_img: article.article_data.articleImg,
-                  description: article.article_data.description,
-                  title: article.article_data.title,
-                  outer_id: outer_id,
-                  edit_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-                }
+        data: {
+          draft: {
+            upsert: {
+              where: {
+                draft: article.gather_id + uid
               },
-              type: 'SINGLE',
-              muster_img: article.muster_img,
-              description: article.muster_desc
-            },
-            update: {
-              article_data: {
-                update: {
-                  where: {
-                    outer_id: article.muster_article_id
-                  },
-                  data: {
-                    article: article.article_data.article,
-                    title: article.article_data.title,
-                    description: article.article_data.description,
-                    article_img: article.article_data.articleImg
-                  }
-                }
+              create: {
+                article_id: article.gather_id,
+                time_stmap: time,
+                draft: article.gather_id + uid
               },
+              update: {
+                time_stmap: time,
+              }
             }
           }
         }
-      }
-    })
+      })
+    } else {
+      await this.prisma.user.update({
+        where: {
+          uuid: uid
+        },
+        data: {
+          draft: {
+            upsert: {
+              where: {
+                draft: article.article_data[0].outer_id + uid,
+              },
+              create: {
+                article_id: article.article_data[0].outer_id,
+                time_stmap: time,
+                draft: article.article_data[0].outer_id + uid,
+              },
+              update: {
+              time_stmap: time
+              }
+            }
+          }
+        }
+      })
+    }
+
+
+    
     return 200
   }
 
-  async createGather(article: GatherInput, context: IContext) {
-    const uid: string = context.req.session['uid']
+  async createArticle(article: SavedArticleInput, uid: string) {
+    const category = await this.categoryService.findCategoryById(article.category)
+    
+    const labels = await this.labelService.findLabelsById(article.labels.map((item) => item))
+
+    const labels_name = labels.map((item) => item.description)
+
+    const articles_data = article.article_data.map((item) => {
+      return {
+        ...item,
+        release: true,
+        categorys: {
+          connect: {
+            category_id: article.category
+          }
+        },
+        labels: {
+          connect: article.labels.map((item) => ({
+              label_id: item
+          }))
+        }
+      }
+    })
+
+    const update_data = article.article_data.map((item) => {
+      return {
+        where: {
+          outer_id: item.outer_id
+        },
+        data: {
+          ...item,
+          release: true,
+          categorys: {
+            connect: {
+              category_id: article.category
+            }
+          },
+          labels: {
+            connect: article.labels.map((item) => ({
+                label_id: item
+            }))
+          }
+        }
+      }
+    })
+
+    const column_update_data = article.article_data.map((item) => {
+      return {
+        where: {
+          outer_id: item.outer_id
+        },
+        create: {
+          ...item,
+          release: true,
+          categorys: {
+            connect: {
+              category_id: article.category
+            }
+          },
+          labels: {
+            connect: article.labels.map((item) => ({
+                label_id: item
+            }))
+          }
+        },
+        update: item
+      }
+    })
+
+    const delete_data = article.article_data.map((item) => {
+      return item.outer_id
+    })
+
+
+
     const items: {
       ItemId: string,
       Timestamp: string,
       Labels: string[],
       Categories: string[]
-    }[] = []
-    const category = await this.categoryService.findCategoryById(article.category)
-    const labels = await this.labelService.findLabelsById(article.labels.map((item) => item.label))
-    const labels_name = labels.map((item) => item.description)
+    }[] = article.article_data.reduce((prev, current) => {
 
-    const gather_id = nanoid()
-    const articles = article.article_data.map((item, index) => {
-      let id = 'G' + nanoid()
-      items.push({
-        ItemId: id,
-        Timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-        Labels: labels_name,
-        Categories: [category.description, ...labels_name]
-      })
-      return {
-        ...item,
-        outer_id: id,
-        edit_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-        release: true,
+        prev.push({
+          ItemId: current.outer_id,
+          Timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+          Labels: labels_name,
+          Categories: [category.description]
+        })
+
+        return prev
+    }, [])
+    const user = await this.prisma.user.findUnique({
+      where: {
+        uuid: uid
+      },
+      select: {
+        info: true
       }
     })
-
-    await this.prisma.user.update({
-      where: {
-        uuid_user: uid
-      },
-      data: {
-        gather_data: {
-          upsert: {
-            where: {
-              gather_id: article.gather_id
-            },
-            create: {
-              article_data: {
-                createMany: {
-                  data: articles
-                }
-              },
-              categorys: {
+    if (article.article_type === 'GATHER') {
+      const infoList = user.info.map((item) => {
+        return {
+          where: {
+            uuid: item.uuid
+          },
+          data: {
+            message: {
+              connectOrCreate: {
+                where: {
+                  article_id: article.article_data[0].outer_id
+                },
                 create: {
-                  category: article.category
+                  article_id: article.article_data[0].outer_id,
+                  timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+                  title: article.article_data[0].title,
+                  article_type: article.article_type
                 }
-              },
-              labels: {
-                createMany: {
-                  data: article.labels
-                }
-              },
-              description: article.description,
-              gather_id,
-              gather_img: article.gather_img
-            },
-            update: {
-              article_data: {
-                update: {
-                  where: {},
-                  data: article.article_data
-                }
-              },
-              categorys: {
-                create: {
-                  category: article.category
-                }
-              },
-              labels: {
-                createMany: {
-                  data: article.labels
-                }
-              },
-              description: article.description,
+              }
             }
           }
+        }
+      })
+      
+      await this.prisma.user.update({
+        where: {
+          uuid: uid
         },
-        dynamic: {
-          create: {
-            type: "RELEASE",
-            content: gather_id,
-            time_tamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+        data: {
+          articles: {
+            upsert: {
+              where: {
+                gather_id: article.gather_id
+              },
+              create: {
+                article_description: article.article_description,
+                article_type: article.article_type,
+                gather_id: article.gather_id,
+                gather_img: article.gather_img,
+                gather_release: true
+              },
+              update: {
+                articles: {
+                  update: update_data,
+                  deleteMany: {
+                    outer_id: {
+                      notIn: delete_data
+                    }
+                  }
+                },
+                article_description: article.article_description,
+                article_type: article.article_type,
+                gather_id: article.gather_id,
+                gather_img: article.gather_img,
+              }
+            }
+          },
+          dynamic: {
+            create: {
+              content: article.gather_id,
+              type: 'RELEASE',
+              time_tamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+            }
+          },
+          info: {
+            update: infoList
+          }
+        },
+      })
+
+      // connect
+      article.article_data.forEach( async (item) => {
+        
+        await this.prisma.gather.update({
+          where: {
+            gather_id: article.gather_id
+          },
+          data: {
+            articles: {
+              create: {
+                ...item,
+                release: true,
+                categorys: {
+                  connect: {
+                    category_id: article.category
+                  }
+                },
+                labels: {
+                  connect: article.labels.map((item) => ({
+                    label_id: item
+                  }))
+                }
+              }
+            }
+          }
+        })
+      })
+      
+
+    } else {
+      const infoList = user.info.map((item) => {
+        return {
+          where: {
+            uuid: item.uuid
+          },
+          data: {
+            message: {
+              connectOrCreate: {
+                where: {
+                  article_id: article.gather_id
+                },
+                create: {
+                  article_id: article.gather_id,
+                  timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+                  title: article.gather_name,
+                  article_type: article.article_type
+                }
+              }
+            }
           }
         }
-      }
-    })
-    if (!article.gather_id) {
-      await this.ItemService.insertItemList(items)
+      })
+      await this.prisma.user.update({
+        where: {
+          uuid: uid
+        },
+        data: {
+          articles: {
+            upsert: {
+              where: {
+                gather_id: article.gather_id
+              },
+              create: {
+                articles: {
+                  create: articles_data
+                },
+                article_description: article.article_description,
+                article_type: article.article_type,
+                gather_id: article.gather_id,
+                gather_release: true
+              },
+              update: {
+                articles: {
+                  upsert: column_update_data,
+                  deleteMany: {
+                    outer_id: {
+                      notIn: delete_data
+                    }
+                  }
+                },
+              }
+            }
+          },
+          dynamic: {
+            create: {
+              content: article.article_data[0].outer_id,
+              type: 'RELEASE',
+              time_tamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+            }
+          },
+          info: {
+            update: infoList
+          }
+        }
+      })
     }
 
+    await this.ItemService.insertItemList(items)
 
+    article.article_data.forEach(async (item) => {
+      await this.elasticsearchService.index({
+        index: 'articles',
+        id: item.outer_id,
+        body: {
+          id: item.outer_id,
+          title: item.title,
+          category: category.description,
+          type: article.article_type,
+          labels: labels_name
+        },
+      })
+    })
+
+      // await this.elasticsearchService.update({
+      //   index: 'articles',
+      //   id: article.muster_article_id,
+      //   body: {
+      //     doc: indexData
+      //   }
+      // })
+    
     return {
-      article: article.gather_id ? article.gather_id : gather_id
+      article_id: article.gather_id
     }
   }
   
   async collectionArticle(uid: string, id: string) {
     this.prisma.user.update({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       data: {
         collection: {
           create: {
-            article_id: id
+            article_id: id,
+            collect_id: uid + id
           }
         }
       }
@@ -456,7 +652,7 @@ export class UsersService {
   async addDynamic(uid: string, content: string, type: DynamicType) {
     return await this.prisma.user.update({
       where: {
-        uuid_user: uid,
+        uuid: uid,
       },
       data: {
         dynamic: {
@@ -473,47 +669,33 @@ export class UsersService {
   async followUser(uid: string, follow_id: string) {
     return await this.prisma.user.update({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       data: {
         follow: {
           create: {
-            follow_user: follow_id
+            follow_id
           }
         }
       }
     })
   }
 
-  async beFollowUser(uid: string, be_followed: string) {
+  async collection(uid:string, article_id: string, type: DynamicType = 'COLLECTION') {
     return await this.prisma.user.update({
       where: {
-        uuid_user: uid
-      },
-      data: {
-        be_follow: {
-          create: {
-            be_followed: be_followed
-          }
-        }
-      }
-    })
-  }
-
-  async collection(uid:string, article_id: string, dynamicContent: string, type: DynamicType = 'COLLECTION') {
-    return await this.prisma.user.update({
-      where: {
-        uuid_user: uid
+        uuid: uid
       },
       data: {
         collection: {
           create: {
-            article_id
+            article_id,
+            collect_id: uid + article_id
           }
         },
         dynamic: {
           create: {
-            content: dynamicContent,
+            content: article_id,
             time_tamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
             type
           }
@@ -522,188 +704,190 @@ export class UsersService {
     })
   }
 
-  async getAllMusterArticles(uid: string, page: number = 0) {
-
-    return await this.prisma.muster.findMany({
+  async removeCollect(uuid: string, article_id: string) {
+    return await this.prisma.user.update({
       where: {
-        authorId: uid
+        uuid
       },
-      select: {
-        article_data: true,
-        author: {
-          select: {
-            name: true,
-            uuid_user: true
+      data: {
+        collection: {
+          delete: {
+            collect_id: uuid + article_id
           }
-        },
-        muster_id: true,
-        muster_img: true,
-        name: true,
-        type: true,
-        description: true
-      },
-      skip: page * 3,
-      take: 3
+        }
+      }
     })
   }
 
-  async getAllMusterArticlesPagenation(uid: string, page: number = 0) {
+  async getAllArticles(uid: string, page: number = 0) {
 
-    return await this.prisma.muster.findMany({
+    return await this.prisma.gather.findMany({
       where: {
-        authorId: uid
-      },
-      select: {
-        article_data: {
-          
-          include: {
-            labels: {
-              select: {
-                Labels: {
-                  select: {
-                    name: true,
-                    description: true,
-                    label_id: true
-                  }
-                }
-              }
+        authorId: uid,
+        articles: {
+          every: {
+            outer_id: {
+              not: ""
             },
-            
           }
         },
-        author: {
-          select: {
-            name: true,
-            uuid_user: true
+        gather_release: true
+      },
+      
+      include: {
+        articles: {
+          include: {
+            zan: true,
+            categorys: true,
+            labels: true,
+            info: true
           }
+          
         },
-        muster_id: true,
-        muster_img: true,
-        name: true,
-        type: true,
-        description: true
+        author: true,
+        
       },
       skip: page * 3,
       take: 3
     })
-
   }
 
-  async getAllGatherArticles(uid: string, p: number = 0) {
-
-
-
-    return await this.prisma.gather.findMany({
+  async getAllGatherArticlesPagenation(uid: string) {
+    return await this.prisma.user.findUnique({
       where: {
-        authorId: uid,
-        article_data: {
-          every: {
-            release: true
-          }
-        }
+        uuid: uid
       },
-      select: { 
-        author: true,
-        description: true,
-        gather_id: true,
-        article_data: true,
-        labels: {
-          select: {
-            Labels: {
-              select: {
-                name: true,
-                description: true,
-                label_id: true
-              }
+      select: {
+        articles: {
+          where: {
+            article_type: {
+              equals: 'GATHER',
+            },
+            gather_release: {
+              equals: true
             }
           }
         }
-      },
-      take: 10,
-      skip: 10 * p
+      }
     })
   }
 
-  async getAllGatherArticlesPagenation(uid: string, p: number = 0) {
-
-    return await this.prisma.gather.findMany({
+  async getAllColumnArtilcesPagenation(uid: string, page: number) {
+    return await this.prisma.user.findUnique({
       where: {
-        authorId: uid,
-        article_data: {
-          every: {
-            release: true
-          }
-        }
+        uuid: uid
       },
-      select: { 
-        author: true,
-        description: true,
-        gather_id: true,
-        article_data: {
-          select: {
-            title: true,
-            author: true,
-            zan: true,
-            hot: true,
-            befollowed: true,
-            outer_id: true,
-            article_img: true,
-            article_type: true,
-            edit_time: true
-          },
-
-        },
-        labels: {
-          select: {
-            Labels: {
-              select: {
-                name: true,
-                description: true,
-                label_id: true
-              }
+      select: {
+        articles: {
+          where: {
+            article_type: {
+              not: 'GATHER',
+            },
+            gather_release: {
+              equals: true
             }
-          }
-        }
-      },
-      take: 3,
-      skip: 3 * p
+          },
+          skip: 5 * page,
+          take: 5
+        },
+        
+      }
     })
   }
 
   async addRecords(uid: string, article_id: string) {
     return await this.prisma.user.update({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       data: {
         record: {
           upsert: {
             where: {
-              article_id: uid + '|' + article_id,
+              record: uid + article_id
             },
             create: {
-              article_id: uid + '|' + article_id,
+              article_id: article_id,
               timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-              percentage: '0'
+              percentage: '0',
+              record: uid + article_id
             },
             update: {
               timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
             }
           }
+        },
+      },
+    })
+  }
+
+  async getFollowUserStatus(uid: string, follow_id: string) {
+    return await this.prisma.user.findUnique({
+      where: {
+        uuid: uid
+      },
+      select: {
+        follow: {
+          where: {
+            follow_id
+          }
         }
-      }      
+      }
+    })
+  }
+
+  async addZan(uid: string, article_id: string) {
+    return await this.prisma.user.update({
+      where: {
+        uuid: uid
+      },
+      data: {
+        zan: {
+          connectOrCreate: {
+            where: {
+              zan_id: uid + article_id
+            },
+            create: {
+              zan_id: uid + article_id,
+              article: {
+                connect: {
+                  outer_id: article_id
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+  }
+
+  async removeZan(uuid: string, id: string) {
+    return await this.prisma.user.update({
+      where: {
+        uuid
+      },
+      data: {
+        zan: {
+          delete: {
+            zan_id: uuid + id
+          }
+        }
+      }
     })
   }
 
   async getRecords(page: number, uid: string) {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       select: {
         record: {
           skip: page * 10,
           take: 10,
+          orderBy: {
+            timestamp: 'desc'
+          },
           select: {
             timestamp: true,
             article_id: true
@@ -716,7 +900,7 @@ export class UsersService {
   async getDynamic(uid: string, page: number) {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid,
+        uuid: uid,
       },
       select: {
         dynamic: {
@@ -727,10 +911,10 @@ export class UsersService {
     })
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<User> {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: id
+        uuid: id
       }
     })
   }
@@ -749,66 +933,27 @@ export class UsersService {
     })
   }
 
-  async addUserZan(uid: string, id: string) {
-    return await this.prisma.user.update({
-      where: {
-        uuid_user: uid
-      },
-      data: {
-        zan_list: {
-          create: {
-            article_id: id,
-            timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-          }
-        },
-        dynamic: {
-          create: {
-            type: 'ZAN',
-            time_tamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-            content: id
-          }
-        }
-      }
-    })
-  }
 
-  async findUserZan(uid: string, id: string) {
+  async getDraft(uid: string, page: number) {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid,
-        
-      },
-      select: {
-        zan_list: {
-          where: {
-            article_id: id
-          }
-        },
-        collection: {
-          where: {
-            article_id: id
-          }
-        },
-        be_follow: true
-      }
-    })
-  }
-
-  async getDraft(uid: string) {
-    return await this.prisma.user.findUnique({
-      where: {
-        uuid_user: uid
+        uuid: uid
       },
       include: {
-        draft: true
-      }
+        draft: {
+          skip: 5 * page,
+          take: 5
+        }
+        
+      },
+      
     })
   }
 
   async getUserSaved(uid: string) {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       select: {
         collection: true
@@ -816,15 +961,25 @@ export class UsersService {
     })
   }
 
-  async saveArticle(uid: string, id: string) {
+  async collectArticle(uid: string, id: string) {
     return await this.prisma.user.update({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       data: {
         collection: {
-          create: {
-            article_id: id
+          connectOrCreate: {
+            where: {
+              collect_id: uid + id
+            },
+            create: {
+              article: {
+                connect: {
+                  outer_id: id
+                }
+              },
+              collect_id: uid + id
+            }
           }
         },
         dynamic: {
@@ -841,11 +996,11 @@ export class UsersService {
   async getUserInfo(uid: string) {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
-      select: {
-        user_img: true,
-        name: true
+      include: {
+        zan: true,
+        reading: true,
       }
     })
   }
@@ -853,27 +1008,18 @@ export class UsersService {
   async getWritingArticle(uid: string) {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       select: {
-        muster_data: {
+        articles: {
           select: {
-            article_data: {
+            articles: {
               select: {
                 outer_id: true
               }
             }
           }
         },
-        gather_data: {
-          select: {
-            article_data: {
-              select: {
-                outer_id: true
-              }
-            }
-          }
-        }
       }
     })
   }
@@ -881,52 +1027,68 @@ export class UsersService {
   async getBaseMusterInfo(uid: string) {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       select: {
-        muster_data: {
+        articles: {
           where: {
-            type: 'MUSTER'
+            article_type: 'COLUMN',
+            
           },
           select: {
-            muster_id: true,
-            name: true,
-          }
-        }
-      }
+            gather_id: true,
+            gather_name: true,
+            gather_img: true,
+            article_description: true,
+            article_type: true,
+            articles: {
+              select: {
+                outer_id: true
+              }
+            },
+            
+          },
+          
+        },
+        
+      },
+      
     })
   }
 
-  async userBeFollowedNum(uid: string) {
+  async getSingleInfo(uid: string) {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       select: {
-        be_follow: true
-      }
-    })
-  }
-
-  async userBeFollowedStatus(uid: string, follow_user: string) {
-    return await this.prisma.user.findUnique({
-      where: {
-        uuid_user: follow_user
-      },
-      select: {
-        be_follow: {
+        articles: {
           where: {
-            be_followed: uid
-          }
+            article_type: 'SINGLE'
+          },
+          select: {
+            articles: {
+              include: {
+                info: true,
+                zan: true,
+                collection: true,
+                categorys: true,
+                labels: true,
+              }
+            },
+            article_type: true
+          },
         }
       }
     })
   }
+
+
 
   async getColletionArticles(uid: string, page: number = 0) {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       select: {
         collection: {
@@ -940,58 +1102,116 @@ export class UsersService {
     })
   }
 
-  async getMusterArticleById(mid: string) {
-    return await this.prisma.muster.findUnique({
+  async getArticleByGatherId(id: string) {
+    return await this.prisma.gather.findUnique({
       where: {
-        muster_id: mid
+        gather_id: id
       },
       select: {
-        muster_img: true,
-        name: true,
+        gather_img: true,
+        gather_name: true,
         author: {
           select: {
             name: true,
             user_img: true,
-            uuid_user: true
+            uuid: true
           }
         },
-        article_data: true,
-        description: true
+        articles: true,
+        article_description: true
       }
     })
   }
 
-  async cMuster(data: CMuster, uid: string) {
+  async createColumn(data: GatherInput, uid: string) {
     return await this.prisma.user.update({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       data: {
-        muster_data: {
+        articles: {
           create: {
-            name: data.name,
-            description: data.desc,
-            muster_img: data.muster_img,
-            muster_id: nanoid()
+            gather_name: data.gather_name,
+            article_description: data.article_description,
+            gather_img: data.gather_img,
+            gather_id: nanoid()
           }
         }
       }
     })
   }
 
-  async getMusterColumn(uid: string) {
+  async getColumn(uid: string) {
     return await this.prisma.user.findUnique({
       where: {
-        uuid_user: uid
+        uuid: uid
       },
       select: {
-        muster_data: {
+        articles: {
           where: {
-            type: 'MUSTER'
+            article_type: 'COLUMN'
+          },
+          include: {
+            articles: true
           }
         }
       }
     })
   }
 
+  async getColumnArticle(gather_id: string) {
+    return await this.prisma.gather.findUnique({
+      where: {
+        gather_id: gather_id
+      },
+      include: {
+        articles: {
+          include: {
+            zan: true,
+            labels: true,
+            categorys: true,
+          }
+        },
+        author: true,
+      },
+    })
+  }
+
+  async getArticlesInfo(uid: string) {
+    return await this.prisma.user.findUnique({
+      where: {
+        uuid: uid
+      },
+      select: {
+        articles: {
+          select: {
+            articles: {
+              select: {
+                zan: true,
+                hot: true
+              }
+            }
+          }
+        },
+      }
+    })
+  }
+
+  async getLastetRecords(uid: string) {
+    return await this.prisma.user.findUnique({
+      where: {
+        uuid: uid
+      },
+      select: {
+        record: {
+          select: {
+            article_id: true
+          },
+          orderBy: {
+            timestamp: 'desc'
+          }
+        }
+      }
+    })
+  }
 }

@@ -9,13 +9,24 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SearchModule = void 0;
 const common_1 = require("@nestjs/common");
 const elasticsearch_1 = require("@nestjs/elasticsearch");
+const nanoid_1 = require("nanoid");
+const search_service_1 = require("./search.service");
 let SearchModule = class SearchModule {
 };
 SearchModule = __decorate([
     (0, common_1.Module)({
-        imports: [elasticsearch_1.ElasticsearchModule.register({
-                node: 'http://localhost:9200',
-            })],
+        imports: [
+            elasticsearch_1.ElasticsearchModule.register({
+                node: "http://180.76.174.196:9200/",
+                generateRequestId: () => (0, nanoid_1.nanoid)(),
+                auth: {
+                    username: 'elastic',
+                    password: '123456'
+                }
+            }),
+        ],
+        providers: [search_service_1.SearchService],
+        exports: [elasticsearch_1.ElasticsearchModule]
     })
 ], SearchModule);
 exports.SearchModule = SearchModule;

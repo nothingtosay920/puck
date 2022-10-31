@@ -8,27 +8,25 @@ import { RecommendItem } from "./recommend.dto";
 export class RecommendService {
   constructor(private httpService: HttpService) {}
 
-  async latestRecoommend(label: LabelType[]): Promise<[RecommendItem]> {
-    
-    let data: string = ''
-      label.forEach((item) => {
-        data += `/${item.label}`
-      })
-    
-    return await firstValueFrom(this.httpService.get(process.env.RECOMMEND_SERVICE + '/api/latest' + data).pipe(map(res => res.data)))
+  async latestRecoommend(label: string, page: number): Promise<[RecommendItem]> {
+
+    return await firstValueFrom(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/latest/' + label + `?n=8&offset=${page}`).pipe(map(res => res.data)))
   }
 
-  async popularRecommend(label: string | string[] = ''): Promise<[RecommendItem]> {
-    let data: string
-    if (label instanceof Array) {
-      label.forEach((item) => {
-        data += `/${item}`
-      })
-    } else {
-      data = `/${label}`
-    } 
-    return await firstValueFrom(this.httpService.get(process.env.RECOMMEND_SERVICE + '/api/popular'+ data).pipe(map(res => res.data)))
+  async popularRecommend(label: string, page: number): Promise<[RecommendItem]> {
+    return await firstValueFrom(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/popular/'+ label + `?n=8&offset=${page}`).pipe(map(res => res.data)))
+  }
+
+  async userRecommend(uid: string, page: number): Promise<[string]> {
+    return await firstValueFrom(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/recommend/'+ uid + `?n=8&offset=${page}`).pipe(map(res => res.data)))
+  }
+
+  async relateRecommend(uid: string): Promise<[string]> {
+    return await firstValueFrom(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/recommend/'+ uid + `?n=5`).pipe(map(res => res.data)))
   }
 
 
+  async popularRelate(label: string): Promise<[RecommendItem]> {
+    return await firstValueFrom(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/popular/'+ label + '?n=5').pipe(map(res => res.data)))
+  }
 }

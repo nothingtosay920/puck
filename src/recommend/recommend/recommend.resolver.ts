@@ -1,90 +1,135 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { ArticleDTO } from 'src/article/article.dto';
+import { ArticleData } from 'src/article/article.dto';
 import { ArticleService } from 'src/article/article.service';
+import { IContext } from 'src/auth/auth.service';
 import { CategoryService } from 'src/category/category.service';
 import { LabelService } from 'src/label/label.service';
-import { GatherService } from 'src/muster/gather.service';
-import { MusterService } from 'src/muster/muster.service';
 import { LabelType } from 'src/users/users.input';
-import { RecommendItem } from './recommend.dto';
+import { UsersService } from 'src/users/users.service';
+import { RecommendItem, RecommendRes, RelateRecommendRes } from './recommend.dto';
 import { RecommendArticles } from './recommend.input';
 import { RecommendService } from './recommend.service';
 
-@Resolver(() => ArticleDTO)
+@Resolver()
 export class RecommendResolver {
 
   constructor(
     private readonly recommendService: RecommendService,
     private readonly articleService: ArticleService,
-    private readonly gatherService: GatherService,
-    private readonly musterService: MusterService,
-    private readonly categoryService: CategoryService,
-    private readonly labelService: LabelService
+    private readonly categoryService: CategoryService
   ) {}
-  
-  @Query(() => [ArticleDTO])
-  async recommendList(@Args('label') label: RecommendArticles) {
-    const recommendItems = await this.recommendService.latestRecoommend(label.labels)
-    return this.handleList(recommendItems)
+
+  @Query(() => RecommendRes, {nullable: true})
+  async recommendList(@Args('label') label: string, @Args('newest') newest: string, @Args('page') page: number) {
+    if (newest === 'newest') {
+      return this.latestList(label, page)
+    } else {
+      return this.popularList(label, page)
+    }
   }
-
-
-  handleList(recommendList: RecommendItem[]) {
-    return recommendList.map(async (item) => {
-      const type = item.Id.slice(0, 1) // G OR M
-      
-      if (type === 'G') {
-        
-        const recommenditem = await this.articleService.getGatherArticle(item.Id)
-        const gather = await this.gatherService.getGather(recommenditem.gather)
-
-        const category = await this.categoryService.findCategoryById(gather.categorys[0].category)
-        
-        const labelsArr = gather.labels.map((item) => {
-          return item.label
-        })
-        const labels = await this.labelService.findLabelsById(labelsArr)
-        return {
-          article_img: recommenditem.article_img,
-          title: recommenditem.title,
-          type: recommenditem.article_type,
-          gather: recommenditem.gather,
-          labels: labels.map((item) => item.name),
-          categorys: category.name,
-          description: gather.description,
-          outer_id: item.Id,
-          zan: recommenditem.zan,
-          hot: recommenditem.hot,
-          author: gather.authorId,
-          muster: null,
-          edit_time: recommenditem.edit_time
-        }
-      } else if (type === "M") {
-        const recommenditem = await this.articleService.getMusterArticle(item.Id)
-        const muster = await this.musterService.getMuster(recommenditem.muster)
-        const category = await this.categoryService.findCategoryById(recommenditem.categorys[0].category)
-        const labelsArr = recommenditem.labels.map((item) => {
-          return item.label
-        })
-        const labels = await this.labelService.findLabelsById(labelsArr)
-        return {
-          muster: recommenditem.muster,
-          type: recommenditem.article_type,
-          description: recommenditem.description,
-          article_img: recommenditem.article_img,
-          title: recommenditem.title,
-          labels: labels.map((item) => item.name),
-          categorys: category.name,
-          outer_id: item.Id,
-          zan: recommenditem.zan,
-          hot: recommenditem.hot,
-          author: muster.authorId,
-          gather: null,
-          edit_time: recommenditem.edit_time
-
-        }
+  
+  async latestList(label: string, page: number) {
+    
+    const list = await this.recommendService.latestRecoommend(label, page)
+    const res = list.map(async (item) => {
+      const article = await this.articleService.getArticle(item.Id)
+      const gather = await this.articleService.getGather(article.gather_id)
+      return {
+        ...article,
+        gather,
+        author: {
+          name: gather.author.name,
+          uuid: gather.author.uuid,
+          user_img: gather.author.user_img
+        },
+        article_type: gather.article_type
       }
     })
+    return {
+      data: res,
+      next: page + 1
+    }
+    
+  }
+
+  async popularList( label: string, page: number) {
+    
+    const list = await this.recommendService.popularRecommend(label, page)
+    const res = list.map(async (item) => {
+      const article = await this.articleService.getArticle(item.Id)
+      const gather = await this.articleService.getGather(article.gather_id)
+      return {
+        ...article,
+        gather,
+        author: {
+          name: gather.author.name,
+          uuid: gather.author.uuid,
+          user_img: gather.author.user_img
+        },
+        article_type: gather.article_type
+      }
+    })
+    return {
+      data: res,
+      next: page + 1
+    }
+    
+  }
+
+  @Query(() => RelateRecommendRes)
+  async userRecommend(@Context() context: IContext, @Args('page') page: number) {
+    const uid = context.req.session['uid']
+    let data = await this.recommendService.userRecommend(uid, page)
+    if (!data) {
+      data = ['']
+    } 
+    
+    return {
+      data: data, 
+      next: page + 1
+    }
+  }
+
+  @Query(() => [ArticleData])
+  async relateRecommend(@Args('label') label: string, @Context() context: IContext) {
+    const uid = context.req.session['uid']
+    let data = []
+    if (uid) {
+      try {
+        data = await this.recommendService.relateRecommend(uid)
+      } catch (error) {
+        data = []
+      }
+    } else {
+      try {
+        const category = await (await this.categoryService.findCategoryById(label)).description
+        const res = await this.recommendService.popularRelate(category)
+        data = res.map<string>((item) => item.Id)
+        
+      } catch (error) {
+        data = []
+      }
+    }
+    if (data === null) {
+      data = []
+    }
+    
+    const res = data.map(async (item) => {
+      const article = await this.articleService.getArticle(item)
+      
+      const gather = await this.articleService.getGather(article.gather_id)
+      return {
+        ...article,
+        gather,
+        author: {
+          name: gather.author.name,
+          uuid: gather.author.uuid,
+          user_img: gather.author.user_img
+        },
+        article_type: gather.article_type
+      }
+    })
+    return res
   }
 
 }

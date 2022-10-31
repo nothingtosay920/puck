@@ -1,100 +1,71 @@
-import { DynamicType, Prisma, User } from '@prisma/client';
+import { ElasticsearchService } from '@nestjs/elasticsearch';
+import { DynamicType, Gather, Prisma, User } from '@prisma/client';
 import { AppService } from 'src/app.service';
-import { CMuster } from 'src/article/article.input';
-import { IContext } from 'src/auth/auth.service';
 import { CategoryService } from 'src/category/category.service';
 import { LabelService } from 'src/label/label.service';
 import { RecommendItemService } from 'src/recommend/item/item.service';
-import { GatherInput, MusterInput } from './users.input';
+import { GatherInput, SavedArticleInput } from './users.input';
 export declare class UsersService {
     private prisma;
     private ItemService;
     private categoryService;
     private labelService;
-    constructor(prisma: AppService, ItemService: RecommendItemService, categoryService: CategoryService, labelService: LabelService);
-    saveMusterArticle(article: MusterInput, context: IContext): Promise<string>;
-    savedGather(article: GatherInput, context: IContext): Promise<number>;
-    createMuster(article: MusterInput, uid: string): Promise<{
-        article_id: string;
+    private elasticsearchService;
+    constructor(prisma: AppService, ItemService: RecommendItemService, categoryService: CategoryService, labelService: LabelService, elasticsearchService: ElasticsearchService);
+    getUserFollow(uuid: string): Promise<{
+        follow: {
+            follow_id: string;
+        }[];
     }>;
-    savedMuster(article: MusterInput, uid: string): Promise<number>;
-    createGather(article: GatherInput, context: IContext): Promise<{
-        article: string;
+    findArticleCollect(outer_id: string, uuid: string): Promise<{
+        collection: import(".prisma/client").Collection[];
+    }>;
+    userBeFollowed(uid: string): Promise<{
+        info: {
+            uuid: string;
+        }[];
+    }>;
+    addInfo(uid: string, info_id: string): Promise<User>;
+    getMessage(uuid: string, page: number): Promise<import(".prisma/client").Info & {
+        message: (import(".prisma/client").MessageData & {
+            info: {
+                reading_time: string;
+            };
+        })[];
+    }>;
+    findZan(uuid: string, article_id: string): Promise<{
+        zan: import(".prisma/client").Zan[];
+    }>;
+    saveArticle(article: SavedArticleInput, uid: string): Promise<number>;
+    createArticle(article: SavedArticleInput, uid: string): Promise<{
+        article_id: string;
     }>;
     collectionArticle(uid: string, id: string): Promise<void>;
     addDynamic(uid: string, content: string, type: DynamicType): Promise<User>;
     followUser(uid: string, follow_id: string): Promise<User>;
-    beFollowUser(uid: string, be_followed: string): Promise<User>;
-    collection(uid: string, article_id: string, dynamicContent: string, type?: DynamicType): Promise<User>;
-    getAllMusterArticles(uid: string, page?: number): Promise<{
-        name: string;
-        description: string;
-        type: import(".prisma/client").MusterType;
-        muster_id: string;
-        muster_img: string;
-        article_data: import(".prisma/client").MusterArticle[];
-        author: {
-            uuid_user: string;
-            name: string;
-        };
-    }[]>;
-    getAllMusterArticlesPagenation(uid: string, page?: number): Promise<{
-        name: string;
-        description: string;
-        type: import(".prisma/client").MusterType;
-        muster_id: string;
-        muster_img: string;
-        article_data: (import(".prisma/client").MusterArticle & {
-            labels: {
-                Labels: {
-                    name: string;
-                    description: string;
-                    label_id: string;
-                };
-            }[];
+    collection(uid: string, article_id: string, type?: DynamicType): Promise<User>;
+    removeCollect(uuid: string, article_id: string): Promise<User>;
+    getAllArticles(uid: string, page?: number): Promise<(Gather & {
+        articles: (import(".prisma/client").Article & {
+            info: import(".prisma/client").Info[];
+            categorys: import(".prisma/client").Category[];
+            zan: import(".prisma/client").Zan[];
+            labels: import(".prisma/client").Label[];
         })[];
-        author: {
-            uuid_user: string;
-            name: string;
-        };
-    }[]>;
-    getAllGatherArticles(uid: string, p?: number): Promise<{
-        description: string;
-        article_data: import(".prisma/client").GatherArticle[];
-        labels: {
-            Labels: {
-                name: string;
-                description: string;
-                label_id: string;
-            };
-        }[];
-        gather_id: string;
         author: User;
-    }[]>;
-    getAllGatherArticlesPagenation(uid: string, p?: number): Promise<{
-        description: string;
-        article_data: {
-            title: string;
-            outer_id: string;
-            hot: number;
-            zan: number;
-            edit_time: string;
-            article_img: string;
-            article_type: string;
-            befollowed: import(".prisma/client").GatherArticleBeFollowed[];
-            author: import(".prisma/client").Gather;
-        }[];
-        labels: {
-            Labels: {
-                name: string;
-                description: string;
-                label_id: string;
-            };
-        }[];
-        gather_id: string;
-        author: User;
-    }[]>;
+    })[]>;
+    getAllGatherArticlesPagenation(uid: string): Promise<{
+        articles: Gather[];
+    }>;
+    getAllColumnArtilcesPagenation(uid: string, page: number): Promise<{
+        articles: Gather[];
+    }>;
     addRecords(uid: string, article_id: string): Promise<User>;
+    getFollowUserStatus(uid: string, follow_id: string): Promise<{
+        follow: import(".prisma/client").Follow[];
+    }>;
+    addZan(uid: string, article_id: string): Promise<User>;
+    removeZan(uuid: string, id: string): Promise<User>;
     getRecords(page: number, uid: string): Promise<{
         record: {
             article_id: string;
@@ -107,65 +78,89 @@ export declare class UsersService {
     findOne(id: string): Promise<User>;
     findOneByPhone(phone: string): Prisma.Prisma__UserClient<User>;
     create(data: Prisma.UserCreateInput): Promise<User>;
-    addUserZan(uid: string, id: string): Promise<User>;
-    findUserZan(uid: string, id: string): Promise<{
-        collection: import(".prisma/client").Collection[];
-        be_follow: import(".prisma/client").BeFollow[];
-        zan_list: import(".prisma/client").UserZan[];
-    }>;
-    getDraft(uid: string): Promise<User & {
+    getDraft(uid: string, page: number): Promise<User & {
         draft: import(".prisma/client").Draft[];
     }>;
     getUserSaved(uid: string): Promise<{
         collection: import(".prisma/client").Collection[];
     }>;
-    saveArticle(uid: string, id: string): Promise<User>;
-    getUserInfo(uid: string): Promise<{
-        name: string;
-        user_img: string;
+    collectArticle(uid: string, id: string): Promise<User>;
+    getUserInfo(uid: string): Promise<User & {
+        zan: import(".prisma/client").Zan[];
+        reading: import(".prisma/client").Reading[];
     }>;
     getWritingArticle(uid: string): Promise<{
-        muster_data: {
-            article_data: {
-                outer_id: string;
-            }[];
-        }[];
-        gather_data: {
-            article_data: {
+        articles: {
+            articles: {
                 outer_id: string;
             }[];
         }[];
     }>;
     getBaseMusterInfo(uid: string): Promise<{
-        muster_data: {
-            name: string;
-            muster_id: string;
+        articles: {
+            articles: {
+                outer_id: string;
+            }[];
+            gather_name: string;
+            article_description: string;
+            article_type: import(".prisma/client").ArticleType;
+            gather_id: string;
+            gather_img: string;
         }[];
     }>;
-    userBeFollowedNum(uid: string): Promise<{
-        be_follow: import(".prisma/client").BeFollow[];
-    }>;
-    userBeFollowedStatus(uid: string, follow_user: string): Promise<{
-        be_follow: import(".prisma/client").BeFollow[];
+    getSingleInfo(uid: string): Promise<{
+        articles: {
+            articles: (import(".prisma/client").Article & {
+                info: import(".prisma/client").Info[];
+                collection: import(".prisma/client").Collection[];
+                categorys: import(".prisma/client").Category[];
+                zan: import(".prisma/client").Zan[];
+                labels: import(".prisma/client").Label[];
+            })[];
+            article_type: import(".prisma/client").ArticleType;
+        }[];
     }>;
     getColletionArticles(uid: string, page?: number): Promise<{
         collection: {
             article_id: string;
         }[];
     }>;
-    getMusterArticleById(mid: string): Promise<{
-        name: string;
-        description: string;
-        muster_img: string;
-        article_data: import(".prisma/client").MusterArticle[];
+    getArticleByGatherId(id: string): Promise<{
+        articles: import(".prisma/client").Article[];
+        gather_name: string;
+        article_description: string;
+        gather_img: string;
         author: {
-            uuid_user: string;
+            uuid: string;
             name: string;
             user_img: string;
         };
     }>;
-    cMuster(data: CMuster, uid: string): Promise<User>;
-    getMusterColumn(uid: string): Promise<{
-        muster_data: import(".prisma/client").Muster[];
+    createColumn(data: GatherInput, uid: string): Promise<User>;
+    getColumn(uid: string): Promise<{
+        articles: (Gather & {
+            articles: import(".prisma/client").Article[];
+        })[];
+    }>;
+    getColumnArticle(gather_id: string): Promise<Gather & {
+        articles: (import(".prisma/client").Article & {
+            categorys: import(".prisma/client").Category[];
+            zan: import(".prisma/client").Zan[];
+            labels: import(".prisma/client").Label[];
+        })[];
+        author: User;
+    }>;
+    getArticlesInfo(uid: string): Promise<{
+        articles: {
+            articles: {
+                zan: import(".prisma/client").Zan[];
+                hot: number;
+            }[];
+        }[];
+    }>;
+    getLastetRecords(uid: string): Promise<{
+        record: {
+            article_id: string;
+        }[];
     }>;
 }

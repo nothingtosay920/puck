@@ -26,8 +26,8 @@ let RecommendItemService = class RecommendItemService {
     async getItemById(id) {
         return await (0, rxjs_1.firstValueFrom)(this.httpService.get(process.env.RECOMMEND_SERVICE + '/item' + `/${id}`).pipe((0, rxjs_1.map)(res => res.data)));
     }
-    async getItemList() {
-        return await (0, rxjs_1.firstValueFrom)(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/items').pipe((0, rxjs_1.map)(res => res.data)));
+    async getItemNeighbors(id) {
+        return await (0, rxjs_1.firstValueFrom)(this.httpService.get(process.env.RECOMMEND_SERVICE + 'api/item/' + id + '/neighbors').pipe((0, rxjs_1.map)(res => res.data)));
     }
     async patchItem(id) {
         return await (0, rxjs_1.firstValueFrom)(this.httpService.patch(process.env.RECOMMEND_SERVICE + '/item' + `/${id}`).pipe((0, rxjs_1.map)(res => res.data)));

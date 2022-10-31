@@ -14,6 +14,8 @@ import { TasksModule } from './task/task.module';
 import { EmitModule } from './emit/emit.module';
 import statusMonitorConfig from './statusMonitor';
 import { StatusMonitorModule } from 'nestjs-status-monitor';
+import { SearchModule } from './search/search.module';
+
 
 @Module({
   imports: [
@@ -36,6 +38,7 @@ import { StatusMonitorModule } from 'nestjs-status-monitor';
         credentials: true,
       },
     }),
+    SearchModule
   ],
   providers: [AppService, AppResolver],
 })

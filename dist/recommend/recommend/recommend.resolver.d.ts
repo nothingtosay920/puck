@@ -1,75 +1,179 @@
 import { ArticleService } from 'src/article/article.service';
+import { IContext } from 'src/auth/auth.service';
 import { CategoryService } from 'src/category/category.service';
-import { LabelService } from 'src/label/label.service';
-import { GatherService } from 'src/muster/gather.service';
-import { MusterService } from 'src/muster/muster.service';
-import { RecommendItem } from './recommend.dto';
-import { RecommendArticles } from './recommend.input';
 import { RecommendService } from './recommend.service';
 export declare class RecommendResolver {
     private readonly recommendService;
     private readonly articleService;
-    private readonly gatherService;
-    private readonly musterService;
     private readonly categoryService;
-    private readonly labelService;
-    constructor(recommendService: RecommendService, articleService: ArticleService, gatherService: GatherService, musterService: MusterService, categoryService: CategoryService, labelService: LabelService);
-    recommendList(label: RecommendArticles): Promise<Promise<{
-        article_img: string;
+    constructor(recommendService: RecommendService, articleService: ArticleService, categoryService: CategoryService);
+    recommendList(label: string, newest: string, page: number): Promise<{
+        data: Promise<{
+            gather: {
+                gather_id: string;
+                articles: {
+                    title: string;
+                    outer_id: string;
+                    article: string;
+                    description: string;
+                    article_img: string;
+                    edit_time: string;
+                }[];
+                gather_name: string;
+                article_type: import(".prisma/client").ArticleType;
+                author: import(".prisma/client").User;
+                gather_img: string;
+                article_description: string;
+            };
+            author: {
+                name: string;
+                uuid: string;
+                user_img: string;
+            };
+            article_type: import(".prisma/client").ArticleType;
+            id: number;
+            title: string;
+            outer_id: string;
+            article: string;
+            description: string;
+            hot: number;
+            gather_id: string;
+            article_img: string;
+            edit_time: string;
+            release: boolean;
+            info: import(".prisma/client").Info[];
+            zan: import(".prisma/client").Zan[];
+            labels: import(".prisma/client").Label[];
+            categorys: import(".prisma/client").Category[];
+            collection: import(".prisma/client").Collection[];
+        }>[];
+        next: number;
+    }>;
+    latestList(label: string, page: number): Promise<{
+        data: Promise<{
+            gather: {
+                gather_id: string;
+                articles: {
+                    title: string;
+                    outer_id: string;
+                    article: string;
+                    description: string;
+                    article_img: string;
+                    edit_time: string;
+                }[];
+                gather_name: string;
+                article_type: import(".prisma/client").ArticleType;
+                author: import(".prisma/client").User;
+                gather_img: string;
+                article_description: string;
+            };
+            author: {
+                name: string;
+                uuid: string;
+                user_img: string;
+            };
+            article_type: import(".prisma/client").ArticleType;
+            id: number;
+            title: string;
+            outer_id: string;
+            article: string;
+            description: string;
+            hot: number;
+            gather_id: string;
+            article_img: string;
+            edit_time: string;
+            release: boolean;
+            info: import(".prisma/client").Info[];
+            zan: import(".prisma/client").Zan[];
+            labels: import(".prisma/client").Label[];
+            categorys: import(".prisma/client").Category[];
+            collection: import(".prisma/client").Collection[];
+        }>[];
+        next: number;
+    }>;
+    popularList(label: string, page: number): Promise<{
+        data: Promise<{
+            gather: {
+                gather_id: string;
+                articles: {
+                    title: string;
+                    outer_id: string;
+                    article: string;
+                    description: string;
+                    article_img: string;
+                    edit_time: string;
+                }[];
+                gather_name: string;
+                article_type: import(".prisma/client").ArticleType;
+                author: import(".prisma/client").User;
+                gather_img: string;
+                article_description: string;
+            };
+            author: {
+                name: string;
+                uuid: string;
+                user_img: string;
+            };
+            article_type: import(".prisma/client").ArticleType;
+            id: number;
+            title: string;
+            outer_id: string;
+            article: string;
+            description: string;
+            hot: number;
+            gather_id: string;
+            article_img: string;
+            edit_time: string;
+            release: boolean;
+            info: import(".prisma/client").Info[];
+            zan: import(".prisma/client").Zan[];
+            labels: import(".prisma/client").Label[];
+            categorys: import(".prisma/client").Category[];
+            collection: import(".prisma/client").Collection[];
+        }>[];
+        next: number;
+    }>;
+    userRecommend(context: IContext, page: number): Promise<{
+        data: [string];
+        next: number;
+    }>;
+    relateRecommend(label: string, context: IContext): Promise<Promise<{
+        gather: {
+            gather_id: string;
+            articles: {
+                title: string;
+                outer_id: string;
+                article: string;
+                description: string;
+                article_img: string;
+                edit_time: string;
+            }[];
+            gather_name: string;
+            article_type: import(".prisma/client").ArticleType;
+            author: import(".prisma/client").User;
+            gather_img: string;
+            article_description: string;
+        };
+        author: {
+            name: string;
+            uuid: string;
+            user_img: string;
+        };
+        article_type: import(".prisma/client").ArticleType;
+        id: number;
         title: string;
-        type: string;
-        gather: string;
-        labels: string[];
-        categorys: string;
-        description: string;
         outer_id: string;
-        zan: number;
-        hot: number;
-        author: string;
-        muster: any;
-        edit_time: string;
-    } | {
-        muster: string;
-        type: string;
+        article: string;
         description: string;
+        hot: number;
+        gather_id: string;
         article_img: string;
-        title: string;
-        labels: string[];
-        categorys: string;
-        outer_id: string;
-        zan: number;
-        hot: number;
-        author: string;
-        gather: any;
         edit_time: string;
+        release: boolean;
+        info: import(".prisma/client").Info[];
+        zan: import(".prisma/client").Zan[];
+        labels: import(".prisma/client").Label[];
+        categorys: import(".prisma/client").Category[];
+        collection: import(".prisma/client").Collection[];
     }>[]>;
-    handleList(recommendList: RecommendItem[]): Promise<{
-        article_img: string;
-        title: string;
-        type: string;
-        gather: string;
-        labels: string[];
-        categorys: string;
-        description: string;
-        outer_id: string;
-        zan: number;
-        hot: number;
-        author: string;
-        muster: any;
-        edit_time: string;
-    } | {
-        muster: string;
-        type: string;
-        description: string;
-        article_img: string;
-        title: string;
-        labels: string[];
-        categorys: string;
-        outer_id: string;
-        zan: number;
-        hot: number;
-        author: string;
-        gather: any;
-        edit_time: string;
-    }>[];
 }

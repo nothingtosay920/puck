@@ -14,7 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CategoryResolver = void 0;
 const graphql_1 = require("@nestjs/graphql");
-const category_dto_1 = require("./category.dto");
+const article_dto_1 = require("../article/article.dto");
 const category_input_1 = require("./category.input");
 const category_service_1 = require("./category.service");
 let CategoryResolver = class CategoryResolver {
@@ -29,13 +29,13 @@ let CategoryResolver = class CategoryResolver {
     }
 };
 __decorate([
-    (0, graphql_1.Query)(() => [category_dto_1.Category]),
+    (0, graphql_1.Query)(() => [article_dto_1.Category]),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], CategoryResolver.prototype, "getCategorys", null);
 __decorate([
-    (0, graphql_1.Mutation)(() => category_dto_1.Category),
+    (0, graphql_1.Mutation)(() => article_dto_1.Category),
     __param(0, (0, graphql_1.Args)("data")),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [category_input_1.CreateCategoryInput]),
